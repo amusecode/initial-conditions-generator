@@ -142,6 +142,7 @@ def read_orbital_elements_from_MinorPlanetCenter(filename="MPCORB.DAT", n=-1):
     LoAn = []
     name = []
     for line in open(filename):
+        print(line)
         Ma.append(float(line[26:35]))
         Aop.append(float(line[37:46]))
         LoAn.append(float(line[48:57]))

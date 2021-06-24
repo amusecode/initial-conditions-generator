@@ -13,8 +13,8 @@ if __name__ in ('__main__', '__plot__'):
     o, arguments  = new_option_parser().parse_args()
 
     bodies = read_set_from_file(o.filename, "amuse", close_file=True)
-    pyplot.scatter(bodies.x.value_in(units.parsec),
-                   bodies.y.value_in(units.parsec))
+    pyplot.scatter(bodies.x.value_in(units.au),
+                   bodies.y.value_in(units.au))
     pyplot.xlabel("x [au]")
     pyplot.ylabel("y [au]")
     pyplot.show()

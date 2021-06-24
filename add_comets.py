@@ -324,7 +324,7 @@ if __name__ in ('__main__', '__plot__'):
 
 
     bodies = read_set_from_file(o.filename, 'hdf5', close_file=True)
-    stars = bodies[bodies.name=="star"]
+    stars = bodies[bodies.type=="star"]
     selected_stars = stars.select(lambda m: m>o.m_min,["mass"])
     selected_stars = selected_stars.select(lambda m: m<=o.m_max,["mass"])
     print("Number of stars:", len(stars), len(selected_stars))

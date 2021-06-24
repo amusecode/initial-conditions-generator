@@ -87,7 +87,7 @@ def read_orbital_elements_for_planets(n, filename="MPCORB.DAT",
                 L = float(line[53:70])
                 Lperi = float(line[71:86])
                 Lnode = float(line[87:102])
-                if n>0 and len(a)>=n:
+                if n>0 and len(sma)>=n:
                     break
                 Aop.append(Lperi)
                 LoAn.append(Lnode)

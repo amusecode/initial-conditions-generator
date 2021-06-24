@@ -54,10 +54,11 @@ def add_secondary(parent_stars, companion_name, masses,
         nb.position += binary_particle.position
         nb.velocity += binary_particle.velocity
         nb[0].type = bi.type
-        nb[0].host = binary_particle
+        #nb[0].host = binary_particle
         nb[0].name = bi.name
         nb[1].type = "companion"
-        nb[1].host = binary_particle
+        #nb[1].host = binary_particle
+        nb[1].host = nb[0].name
         nb[1].name = companion_name
         nb[1].radius = ZAMS_radius(nb[1].mass)
     return nb
@@ -154,9 +155,11 @@ if __name__ in ('__main__', '__plot__'):
                            o.semimajor_axis, o.eccentricity,
                           o.inclination, o.mean_anomaly,
                           o.LoAn, o.Aop)
-    print(stars)
+    print(stars[1])
+    bodies.add_particle(stars[1].as_set())
+    print(bodies)
     time = 0 | units.Myr
-    write_set_to_file(stars,
+    write_set_to_file(bodies,
                       outfile, 'amuse',
                       timestamp=time,
                       append_to_file=False,
