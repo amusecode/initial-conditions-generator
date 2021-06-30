@@ -52,7 +52,7 @@ def construct_particle_set_from_orbital_elements(name,
 
     return p
 
-def read_orbital_elements_for_planets(n, filename="MPCORB.DAT",
+def read_orbital_elements_for_planets(filename="MPCORB.DAT",
                                       Julian_date=2451545.0|units.day):
     #f = open(fdir+"MPCORB.DAT", "r")
     planet_names = ["Mercury", "Venus", "EM Bary", "Mars",
@@ -87,8 +87,8 @@ def read_orbital_elements_for_planets(n, filename="MPCORB.DAT",
                 L = float(line[53:70])
                 Lperi = float(line[71:86])
                 Lnode = float(line[87:102])
-                if n>0 and len(sma)>=n:
-                    break
+                #if n>0 and len(sma)>=n:
+                #    break
                 Aop.append(Lperi)
                 LoAn.append(Lnode)
                 T = (Julian_date-(2451545.0|units.day))/(36525|units.day)
@@ -112,8 +112,11 @@ def new_option_parser():
                       dest="Julian_date", default = 2451545.0|units.day,
                       help="Julan date [%default]")
     result.add_option("-n", 
-                      dest="n", type="int", default = 0,
-                      help="number of planetesimals [%default]")
+                      dest="n_first", type="int", default = 0,
+                      help="first planet (Earth==4) [%default]")
+    result.add_option("-N", 
+                      dest="n_last", type="int", default = 10,
+                      help="last planet (Neptune = 8)[%default]")
     return result
 
 if __name__ in ('__main__', '__plot__'):
@@ -136,11 +139,11 @@ if __name__ in ('__main__', '__plot__'):
         datafile = requests.get(url)
         open('p_elem_t1.txt', 'wb').write(datafile.content)
 
-    name, mass, a, ecc, inc, Ma, Aop, LoAn = read_orbital_elements_for_planets(o.n, filename="p_elem_t1.txt", Julian_date=o.Julian_date)
+    name, mass, a, ecc, inc, Ma, Aop, LoAn = read_orbital_elements_for_planets(filename="p_elem_t1.txt", Julian_date=o.Julian_date)
     p = construct_particle_set_from_orbital_elements(name, mass,
                                                      a, ecc, inc, Ma, Aop, LoAn, sun[0])
 
-    sun.add_particles(p)
+    sun.add_particles(p[o.n_first:o.n_last])
     sun.move_to_center()
 
     solar_system = sun

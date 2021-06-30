@@ -127,12 +127,54 @@ def read_orbital_elements_from_MPCORB(filename="MPCORB.DAT", n=-1):
 
     return name, a, ecc, inc, Ma, Aop, LoAn
 
+def read_orbital_elements_from_CometEls(filename="CometEls", n=-1):
+    #f = open(fdir+"MPCORB.DAT", "r")
+    a = [] | units.AU
+    ecc = []
+    inc = [] 
+    Ma = []
+    Aop = []
+    LoAn = []
+    classify = []
+    name = []
+    Nobs = []
+    U = []
+    MPC_data = False
+    for line in open(filename):
+        print(line)
+        if True:
+          p = float(line[31:40]) | units.au
+          #ecc.append(float(line[50:57]))
+          e = float(line[41:50])
+          if True: #e>0.9:
+            ecc.append(e)
+            name.append(line[0:12])
+            print(name[-1])
+            if ecc[-1]==1:
+              ecc[-1] -= 1.e-5
+            a.append(p/(1-ecc[-1]))
+            Aop.append(float(line[51:60]))
+            LoAn.append(float(line[61:70]))
+            inc.append(float(line[71:80]))
+            yop = float(line[14:18])
+            mop = float(line[19:21])
+            dop = float(line[22:29])
+            Ma.append(numpy.random.random()*360-180)
+            print(a[-1], ecc[-1], inc[-1], Aop[-1], LoAn[-1])
+            if n>0 and len(a)>=n:
+              break
+
+    return name, a, ecc, inc, Ma, Aop, LoAn
+  
 def read_orbital_elements_from_MinorPlanetCenter(filename="MPCORB.DAT", n=-1):
     
     if filename == "MPCORB.DAT":
         name, a, ecc, inc, Ma, Aop, LoAn = read_orbital_elements_from_MPCORB(filename, n)
         return name, a, ecc, inc, Ma, Aop, LoAn
-    
+    elif filename == "CometEls.txt":
+        name, a, ecc, inc, Ma, Aop, LoAn = read_orbital_elements_from_CometEls(filename, n)
+        return name, a, ecc, inc, Ma, Aop, LoAn
+      
     #f = open(fdir+"MPCORB.DAT", "r")
     a = [] | units.AU
     ecc = []
