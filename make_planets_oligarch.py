@@ -239,6 +239,9 @@ def new_system(
     central_particle.position = (0,0,0) | units.AU
     central_particle.velocity = (0,0,0) | units.kms
     central_particle.radius = star_radius
+    central_particle.name = "star"
+    central_particle.type = "star"
+    central_particle.id = 0
     
     if rng is None:
         rng = numpy.random
@@ -263,6 +266,10 @@ def new_system(
         kepler = kepler, 
         rng = rng
     )
+    planets.name = "planet"
+    planets.type = "planet"
+    for i in range(len(planets)):
+        planets[i].id = i
     
     central_particle.planets = planets
     kepler.stop()
@@ -276,18 +283,18 @@ def new_option_parser():
     result.add_option("--seed", 
                       dest="seed", type="int", default = -1,
                       help="random number seed [%default]")
-    result.add_option("-o", "--output",
+    result.add_option("-F", "--output",
                       dest="output_filename", default = "star.h5",
                       help="name of the output filename [%default]")
-    result.add_option("-m", "--star-mass", unit=units.MSun, type="float", default = 1|units.MSun,
+    result.add_option("-m", "--Mstar", unit=units.MSun, type="float", default = 1|units.MSun,
                       dest="star_mass", help='mass of the star [%default]')
-    result.add_option("-r", "--star-radius", unit=units.RSun, type="float", default = 1|units.RSun,
+    result.add_option("-r", "--Rstar", unit=units.RSun, type="float", default = 1|units.RSun,
                       dest="star_radius", help='radius of the star [%default]')
-    result.add_option("--disk-r0", unit=units.AU, type="float", default = 1|units.AU,
+    result.add_option("--amin", unit=units.AU, type="float", default = 1|units.AU,
                       dest="disk_minumum_radius", help='minimum radius of the disk [%default]')
-    result.add_option("--disk-r1", unit=units.AU, type="float", default = 100|units.AU,
+    result.add_option("--amax", unit=units.AU, type="float", default = 100|units.AU,
                       dest="disk_maximum_radius", help='maximum radius of the disk [%default]')
-    result.add_option("--disk-mass", unit=MEarth, type="float", default = 100|MEarth,
+    result.add_option("--Mdisk", unit=MEarth, type="float", default = 100|MEarth,
                       dest="disk_mass", help='mass of the disk [%default]')
     result.add_option("--planet-density", unit=units.g/units.cm**3, type="float", default = 3 | units.g/units.cm**3,
                       dest="planet_density", help='density of the planets  (used for planet radii calculation) [%default]')
@@ -307,6 +314,7 @@ def make_planets_oligarch(
         disk_mass = 200 | MEarth,
         accurancy = 0.0001, 
         planet_density =  3 | units.g/units.cm**3,
+        output_filename = "",
         seed = -1):
             
     if seed < 0:
@@ -334,8 +342,14 @@ def make_planets_oligarch(
     return output.planets[0]
     
     
-
 if __name__ == "__main__":
+    o, arguments  = new_option_parser().parse_args()
+
+    if o.seed>0:
+        numpy.random.seed(o.seed)
+    else:
+        print("random number seed from clock.")
+    
     output = make_planets_oligarch(**new_option_parser().parse_args()[0].__dict__)
     write_set_to_file(output, o.output_filename, 'hdf5', version="2.0",append_to_file = False)
 

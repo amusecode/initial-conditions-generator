@@ -14,8 +14,11 @@ def make_solar_system(iplanet_min, iplanet_max):
     ss = new_solar_system()
     star = ss[ss.name=="SUN"]
     star.type = "star"
+    star.id = 0
     planets = ss[iplanet_min:iplanet_max]
     planets.type = "planet"
+    for i in range(len(planets)):
+        planets[i].id = i
     converter = nbody_system.nbody_to_si(ss.mass.sum(), 1|units.au)
     solar_system = Particles(0)
     solar_system.add_particles(star)
@@ -35,7 +38,7 @@ def new_option_parser():
                       dest="outputfilename", default = "star.amuse",
                       help="outpute filename [%default]")
     result.add_option("--iplanet", 
-                      dest="iplanet_min", type="int",default = 5,
+                      dest="iplanet_min", type="int",default = 1,
                       help="minimal first planet (5=Jupiter) [%default]")
     result.add_option("--jplanet", 
                       dest="iplanet_max", type="int",default = 9,

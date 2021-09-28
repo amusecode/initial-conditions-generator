@@ -34,6 +34,10 @@ def new_option_parser():
     result.add_option("-F", 
                       dest="outfile",default = None,
                       help="output filename [%default]")
+    result.add_option("--name", 
+                      dest="name", 
+                      default = "Sun",
+                      help="disk mass [%default]")
     result.add_option("--Mdisk", unit=units.MSun,
                       dest="Mdisk", type="float",
                       default = 0.01|units.MSun,
