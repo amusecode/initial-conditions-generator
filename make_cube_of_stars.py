@@ -6,9 +6,12 @@ def make_cube_of_stars(masses, names, converter):
   
     N = len(masses)
     stars=Particles(N, mass=masses)
-    L = converter.to_si(1|nbody_system.length)
-    dv = converter.to_si(40|nbody_system.speed)
-  
+    #L = converter.to_si(1|nbody_system.length)
+    #dv = converter.to_si(40|nbody_system.speed)
+    L = 500 |units.au
+    dv = 2.5 | units.kms
+    numpy.random.seed(7654304)
+    
     stars.x=L*numpy.random.uniform(-1.,1.,N)
     stars.y=L*numpy.random.uniform(-1.,1.,N)
     stars.z=L*0.
@@ -18,6 +21,7 @@ def make_cube_of_stars(masses, names, converter):
 
     stars.radius=(1.|units.RSun)*(stars.mass/(1.|units.MSun))**(1./3.)
 
+    stars.type = "star"
     stars.name = names
     stars.mass = masses
     stars.move_to_center()
@@ -34,7 +38,7 @@ def new_option_parser():
                       help="output filename [%default]")
     result.add_option("--nstars", 
                       dest="nstars", type="int",
-                      default = 100,
+                      default = 10,
                       help="number of stars [%default]")
     result.add_option("--mass", unit=units.MSun,
                       dest="mass", type="float",
@@ -71,6 +75,7 @@ if __name__ in ('__main__', '__plot__'):
         numpy.random.seed(o.seed)
     else:
         print("random number seed from clock.")
+    #numpy.random.seed(7654304)
 
     if o.mmin>0|units.MSun:
         masses = new_salpeter_mass_distribution(o.nstars, o.mmin, o.mmax)
@@ -82,7 +87,7 @@ if __name__ in ('__main__', '__plot__'):
     bodies = make_cube_of_stars(masses, o.name, converter)
     print(bodies)
 
-    bodies.scale_to_standard(convert_nbody=converter, virial_ratio=o.Qvir)
+    #bodies.scale_to_standard(convert_nbody=converter, virial_ratio=o.Qvir)
     index = 0
     time = 0|units.Myr
     if o.outfile==None:

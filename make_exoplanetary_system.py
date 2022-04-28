@@ -184,7 +184,7 @@ def add_planet(star, np_obs, mass, sma, ecc, inc):
     star.add_particles(planets)
     return star
 
-def make_planetary_system(name):
+def make_planetary_system(name, add_missing=False):
     Mstar, mass, sma, ecc, inc = read_planetary_system_from_database(name)
     print(Mstar)
     print(mass, sma, ecc, inc)
@@ -199,7 +199,8 @@ def make_planetary_system(name):
     mass, sma, ecc, inc = make_consistent_planetary_system(mass, sma, ecc, inc)
     np_obs = len(mass)
 
-    mass, sma, ecc, inc = fill_in_missing_planets(mass, sma, ecc, inc)
+    if add_missing:
+        mass, sma, ecc, inc = fill_in_missing_planets(mass, sma, ecc, inc)
     
     star = add_planet(star, np_obs, mass, sma, ecc, inc)
     return star
@@ -217,6 +218,10 @@ def new_option_parser():
     result.add_option("--nmin", 
                       dest="nmin", type="int", default = "1",
                       help="minimum number of planets [%default]")
+    result.add_option("--add_missing", 
+                      dest="add_missing", default = False,
+                      action = 'store_true',
+                      help="add potentially missing planets [%default]")
     return result
 
 if __name__ in ('__main__', '__plot__'):
@@ -227,7 +232,7 @@ if __name__ in ('__main__', '__plot__'):
         for name, number in zip(names, np):
             print("star:", name, "has: ", number, "planets.")
     else:
-        system = make_planetary_system(o.name)
+        system = make_planetary_system(o.name, o.add_missing)
         print(system)
         write_set_to_file(system, o.filename, "amuse")
                       

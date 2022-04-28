@@ -26,13 +26,15 @@ def add_secondary(parent_stars, companion_name, masses,
                    semimajor_axis, eccentricity,
                   inclination, mean_anomaly,
                   LoAn,
-                  Aop):
+                  Aop, ctype="star"):
 
+    print("m=", masses)
     for i in range(len(parent_stars)):
         bi = parent_stars[i]
         binary_particle = Particle()
         binary_particle.position = bi.position
         binary_particle.velocity = bi.velocity
+        binary_particle.type = ctype
         binary_particle.name = bi.name
         binary_particle.host = None
         binary_particle.type = "center_of_mass"
@@ -56,7 +58,7 @@ def add_secondary(parent_stars, companion_name, masses,
         nb[0].type = bi.type
         #nb[0].host = binary_particle
         nb[0].name = bi.name
-        nb[1].type = "companion"
+        nb[1].type = ctype
         #nb[1].host = binary_particle
         nb[1].host = nb[0].name
         nb[1].name = companion_name
@@ -97,6 +99,9 @@ def new_option_parser():
     result.add_option("--cname", 
                       dest="companion_name", default = "ABAur_b",
                       help="name of the companion [%default]")
+    result.add_option("--ctype", 
+                      dest="ctype", default = "star",
+                      help="type of the companion [%default]")
     result.add_option("-m", unit=units.MSun,
                       type = "float",
                       dest="mass", default = 0|units.MSun,
@@ -154,7 +159,7 @@ if __name__ in ('__main__', '__plot__'):
                            mass,
                            o.semimajor_axis, o.eccentricity,
                           o.inclination, o.mean_anomaly,
-                          o.LoAn, o.Aop)
+                          o.LoAn, o.Aop, o.ctype)
     print(stars[1])
     bodies.add_particle(stars[1].as_set())
     print(bodies)

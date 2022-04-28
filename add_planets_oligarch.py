@@ -31,6 +31,19 @@ def new_option_parser():
                       dest="Nplanets", type="int",
                       default = 4,
                       help="maximum number of planets [%default]")
+    result.add_option("--fplanets", 
+                      dest="fplanets", type="float",
+                      default = 0.5,
+                      help="fraction of stars with planets [%default]")
+    result.add_option("--mmin", unit=units.MSun,
+                      dest="mmin", type="float",
+                      default = -0.1|units.MSun,
+                      help="minimum stellar mass [%default]")
+    result.add_option("--mmax", unit=units.MSun,
+                      dest="mmax", type="float",
+                      default = 100|units.MSun,
+                      help="maximum stellar mass [%default]")
+    
     result.add_option("--seed", 
                       dest="seed", type="int",default = -1,
                       help="random number seed [%default]")
@@ -47,8 +60,16 @@ if __name__ in ('__main__', '__plot__'):
         print("random number seed from clock.")
 
     bodies = read_set_from_file(o.filename, 'hdf5', close_file=True)
-    stars = bodies[bodies.type==b"star"]
-    for star in stars:
+    stars = bodies[bodies.type=="star"]
+    stars = stars[stars.mass>=o.mmin]
+    stars = stars[stars.mass<=o.mmax]
+    if o.fplanets<=1:
+        nplanets = int(o.fplanets*len(stars))
+    else:
+        nplanets = min(len(stars), int(o.fplanets))
+    stars_with_planets = stars.random_sample(nplanets)
+    print("Number of stars with planets=", len(stars_with_planets))
+    for star in stars_with_planets:
         disk_mass = o.relative_diskmass * star.mass
         planets = make_planets_oligarch(star.mass, star.radius,
                                         o.rmin_disk, o.rmax_disk, disk_mass)
@@ -59,7 +80,7 @@ if __name__ in ('__main__', '__plot__'):
             
         planets.type = "planet"
         planets.name = "planet"
-        planets.host = star.name
+        planets.host = star.key
         print(planets.position.in_(units.parsec))
         planets.position += star.position
         planets.velocity += star.velocity

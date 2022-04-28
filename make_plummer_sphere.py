@@ -4,6 +4,7 @@ import numpy
 
 def make_plummer_sphere(nstars, masses, name, converter):
     stars = new_plummer_model(nstars, converter)
+    stars.type = "star"
     stars.name = name
     stars.mass = masses
     stars.move_to_center()

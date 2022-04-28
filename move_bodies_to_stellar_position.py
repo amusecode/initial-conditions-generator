@@ -1,7 +1,7 @@
 from amuse.lab import *
 
 def move_bodies_to_stellar_position(bodies):
-    star = bodies[bodies.type==b'star']
+    star = bodies[bodies.type=='star']
     #print "pos=", star.position.in_(units.parsec)
     com = star.center_of_mass()
     comv = star.center_of_mass_velocity()
