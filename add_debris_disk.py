@@ -3,11 +3,12 @@ import sys
 import numpy
 from amuse.ext.orbital_elements import new_binary_from_orbital_elements
 from amuse.ext.protodisk import ProtoPlanetaryDisk
+from amuse.couple import bridge
 
-def add_debris_disk(star, Ndisk_per_MSun, Mdisk, masteroid,
+def add_debris_disk(star, ndisk_per_MSun, fdisk, masteroid,
                     Rmin, Rmax, alpha=1.5, Q=1.0):
 
-    Ndisk = int(Ndisk_per_MSun * star.mass.value_in(units.MSun))
+    Ndisk = int(ndisk_per_MSun * star.mass.value_in(units.MSun))
     print("Run with Ndisk = ", Ndisk)
 
     converter = nbody_system.nbody_to_si(star.mass, Rmin)
@@ -17,10 +18,12 @@ def add_debris_disk(star, Ndisk_per_MSun, Mdisk, masteroid,
                               Rmin=Rmin/Rmin,
                               Rmax=Rmax/Rmin,
                               q_out=Q,
-                              discfraction=Mdisk/star.mass).result
+                              discfraction=fdisk).result
+    
     disk.mass = masteroid
-    disk.name = "comet"
+    disk.name = "asteroid"
     disk.type = "debris"
+    disk.host = star.key
     disk.position += star.position
     disk.velocity += star.velocity
     return disk
@@ -38,16 +41,20 @@ def new_option_parser():
                       dest="name", 
                       default = "Sun",
                       help="disk mass [%default]")
-    result.add_option("--Mdisk", unit=units.MSun,
-                      dest="Mdisk", type="float",
+    result.add_option("--fdisk", 
+                      dest="fdisk", type="float",
+                      default = -1,
+                      help="disk mass fraction [%default]")
+    result.add_option("--Mdisk", 
+                      dest="Mdisk", type="float", unit=units.MSun,
                       default = 0.01|units.MSun,
                       help="disk mass [%default]")
     result.add_option("--mdisk", unit=units.kg,
                       dest="mdisk", type="float",
                       default = 0.0 | units.kg,
                       help="mass of individual disk particles [%default]")
-    result.add_option("--Ndisk", 
-                      dest="Ndisk", type="int",
+    result.add_option("--ndisk", 
+                      dest="ndisk", type="int",
                       default = 100,
                       help="number of disk particles per MSun [%default]")
     result.add_option("--rmin", unit=units.au,
@@ -80,7 +87,7 @@ if __name__ in ('__main__', '__plot__'):
         print("random number seed from clock.")
 
     bodies = read_set_from_file(o.filename, 'hdf5', close_file=True)
-    stars = bodies[bodies.name=="Sun"]
+    stars = bodies[bodies.name==o.name]
     if len(stars)==0:
         stars = bodies[bodies.name=="star"]
     if len(stars)==0:
@@ -88,10 +95,16 @@ if __name__ in ('__main__', '__plot__'):
     if len(stars)==0:
         stars = bodies[bodies.type=="star"]
 
-    debris = add_debris_disk(stars[0], o.Ndisk, o.Mdisk, o.mdisk,
-                             o.rmin, o.rmax, o.alpha, o.Q)
-    bodies.add_particles(debris)
-    bodies.move_to_center()
+        
+    for star in stars:
+        if o.fdisk<0:
+            fdisk = o.Mdisk/star.mass
+        else:
+            fdisk = o.fdisk
+        debris = add_debris_disk(star, o.ndisk, fdisk, o.mdisk,
+                                 o.rmin, o.rmax, o.alpha, o.Q)
+        bodies.add_particles(debris)
+        bodies.move_to_center()
 
     time = 0|units.Myr
     if o.outfile==None:

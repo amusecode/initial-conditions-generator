@@ -67,6 +67,23 @@ def test_rotate(phi, theta, chi):
     pyplot.ylabel("z-axis [au]")
     pyplot.show()
 
+def rotate_bodies_isotropically(particles):
+    phi, theta, chi = random_Euler_angles()
+    phi = numpy.rad2deg(phi)
+    theta = numpy.rad2deg(theta)
+    chi = numpy.rad2deg(chi)
+    disk = rotate_particle_set(particles, phi, theta, chi)
+    return disk
+
+def rotate_minor_bodies_around_star(star, bodies):
+    disk = bodies[bodies.host==star.key]
+    print(disk)
+    disk.position -= star.position
+    disk.velocity -= star.velocity
+    disk = rotate_bodies_isotropically(disk)
+    disk.position += star.position
+    disk.velocity += star.velocity
+
 def new_option_parser():
     from amuse.units.optparse import OptionParser
     result = OptionParser()
@@ -82,6 +99,9 @@ def new_option_parser():
     result.add_option("-t",
                       dest="theta", type="float", default = -62.5,
                       help="rotate under y-axis [%default]")
+    result.add_option("--type",
+                      dest="rotate_type", default = "",
+                      help="rotate particle type [%default]")
     result.add_option("-c",
                       dest="chi", type="float", default = 0.0,
                       help="rotate under z-axis [%default]")
@@ -94,24 +114,29 @@ if __name__ in ('__main__', '__plot__'):
         exit
 
     bodies = read_set_from_file(o.filename, 'hdf5', close_file=True)
-    com = bodies.center_of_mass()
-    comv = bodies.center_of_mass_velocity()
-    bodies.move_to_center()
-
-    if o.phi==None:
-        phi, theta, chi = random_Euler_angles()
-        phi = numpy.rad2deg(phi)
-        theta = numpy.rad2deg(theta)
-        chi = numpy.rad2deg(chi)
-        print("rotate randomly to (phi, theta, chi):", phi, theta, chi)
+    if len(o.rotate_type)>0:
+        stars = bodies[bodies.type==o.rotate_type]
+        for star in stars:
+            rotate_minor_bodies_around_star(star, bodies)
     else:
-        phi = o.phi
-        theta = o.theta
-        chi = o.chi
+        com = bodies.center_of_mass()
+        comv = bodies.center_of_mass_velocity()
+        bodies.move_to_center()
+
+        if o.phi==None:
+            phi, theta, chi = random_Euler_angles()
+            phi = numpy.rad2deg(phi)
+            theta = numpy.rad2deg(theta)
+            chi = numpy.rad2deg(chi)
+            print("rotate randomly to (phi, theta, chi):", phi, theta, chi)
+        else:
+            phi = 0
+            theta = 0
+            chi = 0
         
-    rotated_bodies = rotate_particle_set(bodies, phi, theta, chi)
-    bodies.position += com
-    bodies.velocity += comv
+        bodies = rotate_particle_set(bodies, phi, theta, chi)
+        bodies.position += com
+        bodies.velocity += comv
 
     if o.outfile == None:
         outfile = "particles_rotated.amuse"
@@ -119,7 +144,7 @@ if __name__ in ('__main__', '__plot__'):
         outfile = o.outfile
     index = 0
     time = 0|units.Myr
-    write_set_to_file(rotated_bodies,
+    write_set_to_file(bodies,
                       outfile, 'amuse',
                       timestamp=time,
                       overwrite_file=True,

@@ -16,7 +16,8 @@ if __name__ in ('__main__', '__plot__'):
     o, arguments  = new_option_parser().parse_args()
 
     bodies = read_set_from_file(o.filename, 'hdf5', close_file=True)
-
+    print(bodies)
+    
     sys.stdout = open(o.outfile, 'w')
     print("# body key, name, type, mass (Msun), position (au), velocity (kms)")
 

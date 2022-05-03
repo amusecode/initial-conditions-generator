@@ -15,6 +15,10 @@ def new_option_parser():
     result.add_option("-F", 
                       dest="outfile",default = None,
                       help="output filename [%default]")
+    result.add_option("--name", 
+                      dest="name", 
+                      default = None,
+                      help="Add planets to named star [%default]")
     result.add_option("--rmin_disk", unit=units.au,
                       dest="rmin_disk", type="float",
                       default = 1.0 | units.au,
@@ -61,6 +65,7 @@ if __name__ in ('__main__', '__plot__'):
 
     bodies = read_set_from_file(o.filename, 'hdf5', close_file=True)
     stars = bodies[bodies.type=="star"]
+    stars = stars[stars.name==o.name]
     stars = stars[stars.mass>=o.mmin]
     stars = stars[stars.mass<=o.mmax]
     if o.fplanets<=1:
