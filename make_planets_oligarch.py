@@ -61,6 +61,7 @@ from amuse.units.optparse import OptionParser
 from amuse.datamodel import Particle, Particles
 from amuse.community.kepler.interface import Kepler
 from amuse.io import write_set_to_file
+from amuse.lab import new_kroupa_mass_distribution
 
 
 MEarth = named_unit("MEarth", "MEarth", 5.97219e+24 * units.kg)
@@ -226,7 +227,7 @@ def make_planets(central_particle, masses, radii, density = 3 | units.g/units.cm
 def new_system(
         star_mass = 1|units.MSun, 
         star_radius = 1|units.RSun, 
-        disk_minumum_radius = 0.05 | units.AU,
+        disk_minimum_radius = 0.05 | units.AU,
         disk_maximum_radius = 10 | units.AU,
         disk_mass = 20 | MEarth,
         accurancy = 0.0001, 
@@ -253,7 +254,7 @@ def new_system(
         kepler.initialize_code()
         
     m, r, f = new_planet_distribution(
-        disk_minumum_radius, disk_maximum_radius, 
+        disk_minimum_radius, disk_maximum_radius, 
         disk_mass,
         accurancy
     )
@@ -288,18 +289,26 @@ def new_option_parser():
                       help="name of the output filename [%default]")
     result.add_option("-m", "--Mstar", unit=units.MSun, type="float", default = 1|units.MSun,
                       dest="star_mass", help='mass of the star [%default]')
-    result.add_option("-r", "--Rstar", unit=units.RSun, type="float", default = 1|units.RSun,
+    result.add_option("-r", "--Rstar", unit=units.RSun, type="float", default = -1|units.RSun,
                       dest="star_radius", help='radius of the star [%default]')
-    result.add_option("--amin", unit=units.AU, type="float", default = 1|units.AU,
-                      dest="disk_minumum_radius", help='minimum radius of the disk [%default]')
-    result.add_option("--amax", unit=units.AU, type="float", default = 100|units.AU,
+    result.add_option("--amin", unit=units.AU, type="float", default = 0.3|units.AU,
+                      dest="disk_minimum_radius", help='minimum radius of the disk [%default]')
+    result.add_option("--amax", unit=units.AU, type="float", default = 300|units.AU,
                       dest="disk_maximum_radius", help='maximum radius of the disk [%default]')
-    result.add_option("--Mdisk", unit=MEarth, type="float", default = 100|MEarth,
+    result.add_option("--Nstars", type="int", default = 1,
+                      dest="Nstars", help='number of stars [%default]')
+    result.add_option("--Mmin", unit=units.MSun, type="float", default = 0.3|units.MSun,
+                      dest="minimum_stellar_mass", help='minimum mass of primary star [%default]')
+    result.add_option("--Mmax", unit=units.MSun, type="float", default = 3.0|units.MSun,
+                      dest="maximum_stellar_mass", help='maximum mass of primary star [%default]')
+    result.add_option("--Mdisk", unit=MEarth, type="float", default = -100|MEarth,
                       dest="disk_mass", help='mass of the disk [%default]')
+    result.add_option("--fdisk", type="float", default = 0.01,
+                      dest="disk_mass_fraction", help='fraction of the mass of the disk [%default]')
     result.add_option("--planet-density", unit=units.g/units.cm**3, type="float", default = 3 | units.g/units.cm**3,
                       dest="planet_density", help='density of the planets  (used for planet radii calculation) [%default]')
-    result.add_option("--accurancy", type="float", default = 0.0001,
-                      dest="accurancy", help='how accurate should the disk mass be integrated to[%default]')
+    result.add_option("--accuracy", type="float", default = 0.0001,
+                      dest="accuracy", help='how accurate should the disk mass be integrated to[%default]')
     #result.add_option("--plot",
     #              action="store_true", dest="make_plot", default=False,
     #              help="make a plot of the planets")
@@ -309,12 +318,11 @@ def new_option_parser():
 def make_planets_oligarch(
         star_mass = 1|units.MSun, 
         star_radius = 1|units.RSun, 
-        disk_minumum_radius = 0.05 | units.AU,
+        disk_minimum_radius = 0.05 | units.AU,
         disk_maximum_radius = 10 | units.AU,
         disk_mass = 200 | MEarth,
-        accurancy = 0.0001, 
+        accuracy = 0.0001, 
         planet_density =  3 | units.g/units.cm**3,
-        output_filename = "",
         seed = -1):
             
     if seed < 0:
@@ -326,21 +334,32 @@ def make_planets_oligarch(
     output = new_system(
         star_mass, 
         star_radius, 
-        disk_minumum_radius,
+        disk_minimum_radius,
         disk_maximum_radius,
         disk_mass,
-        accurancy, 
+        accuracy, 
         planet_density,
         rng = rng)
     
     star = output[0]
+    print("Stellar mass:", star_mass.in_(units.MSun))
     print("Number of planets generated:", len(star.planets))
     print("Total mass:", star.planets.mass.sum().as_quantity_in(MEarth))
     for i, planet  in enumerate(star.planets):
         print("Planet: {0: 3d} , mass: {1: 8.3f}  MEarth, a: {2: 8.2f} AU".format(i, planet.mass.value_in(MEarth), planet.semimajor_axis.value_in(units.AU)))
 
     return output.planets[0]
-    
+
+def ZAMS_radius(mass):
+    log_mass = numpy.log10(mass.value_in(units.MSun))
+    mass_sq = (mass.value_in(units.MSun))**2
+    alpha = 0.08353 + 0.0565*log_mass
+    beta  = 0.01291 + 0.2226*log_mass
+    gamma = 0.1151 + 0.06267*log_mass
+    r_zams = pow(mass.value_in(units.MSun), 1.25) * (0.1148 + 0.8604*mass_sq) / (0.04651 + mass_sq)
+
+    return r_zams | units.RSun
+
     
 if __name__ == "__main__":
     o, arguments  = new_option_parser().parse_args()
@@ -349,7 +368,55 @@ if __name__ == "__main__":
         numpy.random.seed(o.seed)
     else:
         print("random number seed from clock.")
-    
-    output = make_planets_oligarch(**new_option_parser().parse_args()[0].__dict__)
-    write_set_to_file(output, o.output_filename, 'hdf5', version="2.0",append_to_file = False)
+
+    if o.Nstars==1:
+        if o.disk_mass>0|units.MSun:
+            disk_mass = o.disk_mass
+        else:
+            disk_mass = o.disk_mass_fraction*o.star_mass
+            
+        if o.star_radius<=0|units.RSun:
+            star_radius = ZAMS_radius(o.star_mass)
+        else:
+            star_radius = o.star_radius
+        star_with_planets = make_planets_oligarch(star_mass = o.star_mass,
+                                                  star_radius = star_radius,
+                                                  disk_minimum_radius = o.disk_minimum_radius,
+                                                  disk_maximum_radius = o.disk_maximum_radius,
+                                                  disk_mass = disk_mass,
+                                                  accuracy = o.accuracy,
+                                                  planet_density =  o.planet_density,
+                                                  seed = o.seed)
+        #output = make_planets_oligarch(**new_option_parser().parse_args()[0].__dict__)
+        write_set_to_file(star_with_planets,
+                          o.output_filename,
+                          'hdf5',
+                          version="2.0",
+                          append_to_file = False)
+    else:
+        masses = new_kroupa_mass_distribution(o.Nstars,
+                                              mass_min=o.minimum_stellar_mass,
+                                              mass_max=o.maximum_stellar_mass)
+
+        for mi in range(len(masses)):
+            output_filename = 'StarWithPlanets_i%6.6i.amuse'%mi
+            if o.disk_mass>0|units.MSun:
+                disk_mass = o.disk_mass
+            else:
+                disk_mass = o.disk_mass_fraction*masses[mi]
+            
+            star_radius = ZAMS_radius(masses[mi])
+            star_with_planets = make_planets_oligarch(star_mass = masses[mi],
+                                                      star_radius = star_radius,
+                                                      disk_minimum_radius = o.disk_minimum_radius,
+                                                      disk_maximum_radius = o.disk_maximum_radius,
+                                                      disk_mass = disk_mass,
+                                                      accuracy = o.accuracy,
+                                                      planet_density =  o.planet_density,
+                                                      seed = o.seed)
+            write_set_to_file(star_with_planets,
+                              output_filename,
+                              'hdf5',
+                              version="2.0",
+                              append_to_file = False)
 

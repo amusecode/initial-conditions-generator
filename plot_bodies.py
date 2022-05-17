@@ -1,19 +1,8 @@
 from amuse.lab import *
 from matplotlib import pyplot
 
-def new_option_parser():
-    from amuse.units.optparse import OptionParser
-    result = OptionParser()
-    result.add_option("-f", 
-                      dest="filename", default = None,
-                      help="input filename [%default]")
-    return result
-
-if __name__ in ('__main__', '__plot__'):
-    o, arguments  = new_option_parser().parse_args()
-
-    bodies = read_set_from_file(o.filename, "amuse", close_file=True)
-    print(bodies)
+def  plot_bodies(bodies):
+    
     stars = bodies[bodies.type=="star"]
     planets = bodies[bodies.type=="planet"]
     debris = bodies[bodies.type=="debris"]
@@ -28,3 +17,18 @@ if __name__ in ('__main__', '__plot__'):
     pyplot.xlabel("x [au]")
     pyplot.ylabel("y [au]")
     pyplot.show()
+
+def new_option_parser():
+    from amuse.units.optparse import OptionParser
+    result = OptionParser()
+    result.add_option("-f", 
+                      dest="filename", default = None,
+                      help="input filename [%default]")
+    return result
+
+if __name__ in ('__main__', '__plot__'):
+    o, arguments  = new_option_parser().parse_args()
+
+    bodies = read_set_from_file(o.filename, "amuse", close_file=True)
+    print(bodies)
+    plot_bodies(bodies)

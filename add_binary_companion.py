@@ -22,7 +22,7 @@ def ZAMS_radius(mass):
 
     return r_zams | units.RSun
 
-def add_secondary(parent_stars, companion_name, masses,
+def add_secondaries(parent_stars, companion_name, masses,
                    semimajor_axis, eccentricity,
                   inclination, mean_anomaly,
                   LoAn,
@@ -71,6 +71,7 @@ def add_secondary(parent_stars, companion_name, masses,
     #    binary_particle.eccentricity = eccentricity
     #return binary_particle
 
+    
 def calculate_orbital_elementss(bi, converter):
     kep = new_kepler(converter)
     comp1 = bi.child1
@@ -154,7 +155,7 @@ if __name__ in ('__main__', '__plot__'):
     else:
         mass = numpy.zeros(len(selected_stars)) | units.MSun
         mass += o.mass
-    stars = add_secondary(selected_stars,
+    stars = add_secondaries(selected_stars,
                            o.companion_name,
                            mass,
                            o.semimajor_axis, o.eccentricity,

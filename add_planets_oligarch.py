@@ -64,6 +64,7 @@ if __name__ in ('__main__', '__plot__'):
         print("random number seed from clock.")
 
     bodies = read_set_from_file(o.filename, 'hdf5', close_file=True)
+    print(bodies)
     stars = bodies[bodies.type=="star"]
     stars = stars[stars.name==o.name]
     stars = stars[stars.mass>=o.mmin]
