@@ -41,6 +41,14 @@ def new_option_parser():
                       dest="name", 
                       default = "Sun",
                       help="disk mass [%default]")
+    result.add_option("--dname", 
+                      dest="dname", 
+                      default = "asteroid",
+                      help="debris name [%default]")
+    result.add_option("--dtype", 
+                      dest="dtype", 
+                      default = "debris",
+                      help="debris type [%default]")
     result.add_option("--fdisk", 
                       dest="fdisk", type="float",
                       default = -1,
@@ -103,6 +111,8 @@ if __name__ in ('__main__', '__plot__'):
             fdisk = o.fdisk
         debris = add_debris_disk(star, o.ndisk, fdisk, o.mdisk,
                                  o.rmin, o.rmax, o.alpha, o.Q)
+        debris.name = o.dname
+        debris.type = o.dtype
         bodies.add_particles(debris)
         bodies.move_to_center()
 

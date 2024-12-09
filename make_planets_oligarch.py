@@ -341,14 +341,15 @@ def make_planets_oligarch(
         planet_density,
         rng = rng)
     
-    star = output[0]
+    star = output[0].as_set()
     print("Stellar mass:", star_mass.in_(units.MSun))
     print("Number of planets generated:", len(star.planets))
-    print("Total mass:", star.planets.mass.sum().as_quantity_in(MEarth))
-    for i, planet  in enumerate(star.planets):
-        print("Planet: {0: 3d} , mass: {1: 8.3f}  MEarth, a: {2: 8.2f} AU".format(i, planet.mass.value_in(MEarth), planet.semimajor_axis.value_in(units.AU)))
+    #print("Total mass:", output.planets.mass.sum().as_quantity_in(MEarth))
+    for i, planet  in enumerate(star.planets[0]):
+        print("Planet: {0: 3d} , mass: {1: 8.3f}  MEarth, a: {2: 8.2f} au".format(i, planet.mass.value_in(MEarth), planet.semimajor_axis.value_in(units.au)))
 
-    return output.planets[0]
+    star.add_particles(output.planets[0])
+    return star
 
 def ZAMS_radius(mass):
     log_mass = numpy.log10(mass.value_in(units.MSun))

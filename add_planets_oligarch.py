@@ -47,6 +47,10 @@ def new_option_parser():
                       dest="mmax", type="float",
                       default = 100|units.MSun,
                       help="maximum stellar mass [%default]")
+    result.add_option("--mscale", 
+                      dest="mscale", type="float",
+                      default = 1,
+                      help="scaling of the planet mass [%default]")
     
     result.add_option("--seed", 
                       dest="seed", type="int",default = -1,
@@ -79,6 +83,7 @@ if __name__ in ('__main__', '__plot__'):
         disk_mass = o.relative_diskmass * star.mass
         planets = make_planets_oligarch(star.mass, star.radius,
                                         o.rmin_disk, o.rmax_disk, disk_mass)
+        planets = planets[planets.type=="planet"]
         while len(planets)>o.Nplanets:
             mmin = planets.mass.min()
             lm_planet = planets[planets.mass<=mmin]
@@ -90,9 +95,14 @@ if __name__ in ('__main__', '__plot__'):
         print(planets.position.in_(units.parsec))
         planets.position += star.position
         planets.velocity += star.velocity
+        planets.mass *= o.mscale
         bodies.add_particles(planets)
     move_bodies_to_stellar_position(bodies)
-
+    
+    planets = bodies[bodies.type=="planet"]
+    for i, planet  in enumerate(planets):
+        print("Planet: {0: 3d} , mass: {1: 8.3f}  MEarth, a: {2: 8.2f} au".format(i, planet.mass.value_in(units.MEarth), planet.semimajor_axis.value_in(units.au)))
+    
     time = 0|units.Myr
     if o.outfile==None:
         filename = "added_oligarch_planets.amuse"
@@ -102,6 +112,7 @@ if __name__ in ('__main__', '__plot__'):
                       filename, 'amuse',
                       timestamp=time,
                       append_to_file=False,
+                      overwrite_file=True,
                       version="2.0")
 
     

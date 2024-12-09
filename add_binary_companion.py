@@ -37,6 +37,7 @@ def add_secondaries(parent_stars, companion_name, masses,
         binary_particle.type = ctype
         binary_particle.name = bi.name
         binary_particle.host = None
+        
         binary_particle.type = "center_of_mass"
 
         mp = bi.mass
@@ -60,7 +61,9 @@ def add_secondaries(parent_stars, companion_name, masses,
         nb[0].name = bi.name
         nb[1].type = ctype
         #nb[1].host = binary_particle
-        nb[1].host = nb[0].name
+        #nb[1].host = nb[0].name
+        nb[1].host = bi.key
+
         nb[1].name = companion_name
         nb[1].radius = ZAMS_radius(nb[1].mass)
     return nb

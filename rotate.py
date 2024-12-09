@@ -130,11 +130,11 @@ if __name__ in ('__main__', '__plot__'):
             chi = numpy.rad2deg(chi)
             print("rotate randomly to (phi, theta, chi):", phi, theta, chi)
         else:
-            phi = 0
-            theta = 0
-            chi = 0
+            phi = o.phi
+            theta = o.theta
+            chi = o.chi
         
-        bodies = rotate_particle_set(bodies, phi, theta, chi)
+        bodies = rotate_particle_set(bodies, phi, theta, chi) #takes angles in degrees
         bodies.position += com
         bodies.velocity += comv
 
