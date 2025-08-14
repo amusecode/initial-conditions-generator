@@ -1,51 +1,58 @@
-from amuse.lab import *
+import argparse
+
+import numpy as np
+
+from amuse.units import units
+from amuse.io import write_set_to_file, read_set_from_file
 
 
-def new_option_parser():
-    from amuse.units.optparse import OptionParser
-
-    result = OptionParser()
-    result.add_option(
-        "-f", dest="filename", default=None, help="input filename [%default]"
+def new_argument_parser():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    result.add_option(
-        "-F", dest="outfile", default=None, help="output filename [%default]"
+    parser.add_argument(
+        "-f", "--filename", default=None, help="input filename"
     )
-    result.add_option("--name", dest="name", default="Sun", help="disk mass [%default]")
-    result.add_option(
+    parser.add_argument(
+        "-F", "--outfile", default=None, help="output filename"
+    )
+    parser.add_argument("--name", default="Sun", help="disk mass")
+    parser.add_argument(
         "--nstars",
-        dest="nstars",
-        type="int",
+        type=int,
         default=1,
-        help="number of stars with name [%default]",
+        help="number of stars with name",
     )
-    result.add_option(
+    parser.add_argument(
         "--seed",
-        dest="seed",
-        type="int",
+        type=int,
         default=-1,
-        help="random number seed [%default]",
+        help="random number seed",
     )
-    return result
+    return parser
 
 
-if __name__ in ("__main__", "__plot__"):
-    o, arguments = new_option_parser().parse_args()
+def main():
+    args = new_argument_parser().parse_args()
 
-    if o.seed > 0:
-        numpy.random.seed(o.seed)
+    if args.seed > 0:
+        np.random.seed(args.seed)
     else:
         print("random number seed from clock.")
 
-    bodies = read_set_from_file(o.filename, "hdf5", close_file=True)
-    random_stars = bodies.random_sample(o.nstars)
-    random_stars.name = o.name
+    bodies = read_set_from_file(args.filename, close_file=True)
+    random_stars = bodies.random_sample(args.nstars)
+    random_stars.name = args.name
 
     time = 0 | units.Myr
-    if o.outfile == None:
+    if args.outfile is None:
         filename = "added_names_to_subset_of_stars.amuse"
     else:
-        filename = o.outfile
+        filename = args.outfile
     write_set_to_file(
         bodies, filename, "amuse", timestamp=time, append_to_file=False, version="2.0"
     )
+
+
+if __name__ == "__main__":
+    main()

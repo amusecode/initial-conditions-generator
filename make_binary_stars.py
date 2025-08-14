@@ -1,10 +1,15 @@
-from amuse.lab import *
-import numpy
-import logging
+import argparse
+
+import numpy as np
+
+from amuse.units import units, constants
+from amuse.datamodel import Particles
+from amuse.community.kepler import Kepler
+from amuse.io import read_set_from_file, write_set_to_file
 
 
 def semimajor_axis_to_orbital_period(a, Mtot):
-    return 2 * numpy.pi * (a**3 / (constants.G * Mtot)).sqrt()
+    return 2 * np.pi * (a**3 / (constants.G * Mtot)).sqrt()
 
 
 def new_kepler(converter):
@@ -25,7 +30,7 @@ def new_binary_orbit(mass1, mass2, semi_major_axis, eccentricity=0, keyoffset=1)
 
     mu = constants.G * total_mass
 
-    velocity_perihelion = numpy.sqrt(
+    velocity_perihelion = np.sqrt(
         mu / semi_major_axis * ((1.0 + eccentricity) / (1.0 - eccentricity))
     )
     radius_perihelion = semi_major_axis * (1.0 - eccentricity)
@@ -48,11 +53,11 @@ def new_binary_orbit(mass1, mass2, semi_major_axis, eccentricity=0, keyoffset=1)
 
 
 def random_semimajor_axis(amin, amax):
-    lamin = numpy.log10(amin.value_in(units.au))
-    lamax = numpy.log10(amax.value_in(units.au))
+    lamin = np.log10(amin.value_in(units.au))
+    lamax = np.log10(amax.value_in(units.au))
     rnd_min = lamin
     rnd_max = lamax
-    rnd = numpy.random.uniform(rnd_min, rnd_max, 1)
+    rnd = np.random.uniform(rnd_min, rnd_max, 1)
     a = 10**rnd
     return a | units.au
 
@@ -66,18 +71,18 @@ def random_semimajor_axis_PPE(Mprim, Msec, amin, amax):
     rnd_max = (Pmax * mpf) ** (1.0 / 3.3) / (1 + (Pmin * mpf) ** (1.0 / 3.3))
     rnd_min = (Pmin * mpf) ** (1.0 / 3.3) / (1 + (Pmax * mpf) ** (1.0 / 3.3))
     rnd_max = min(rnd_max, 1)
-    rnd = numpy.random.uniform(rnd_min, rnd_max, 1)
+    rnd = np.random.uniform(rnd_min, rnd_max, 1)
     Porb = ((rnd / (1.0 - rnd)) ** 3.3) / mpf | units.day
     print(Pmin, Pmax, Porb)
     xx
 
     Mtot = Mprim + Msec
-    a = ((constants.G * Mtot) * (Porb / (2 * numpy.pi)) ** 2) ** (1.0 / 3.0)
+    a = ((constants.G * Mtot) * (Porb / (2 * np.pi)) ** 2) ** (1.0 / 3.0)
     return a
 
 
 def ZAMS_radius(mass):
-    log_mass = numpy.log10(mass.value_in(units.MSun))
+    log_mass = np.log10(mass.value_in(units.MSun))
     mass_sq = (mass.value_in(units.MSun)) ** 2
     alpha = 0.08353 + 0.0565 * log_mass
     beta = 0.01291 + 0.2226 * log_mass
@@ -92,7 +97,6 @@ def ZAMS_radius(mass):
 
 
 def make_secondaries(center_of_masses, Nbin, amin, amax):
-
     resulting_binaries = Particles()
     singles_in_binaries = Particles()
     binaries = center_of_masses.random_sample(Nbin)
@@ -100,14 +104,14 @@ def make_secondaries(center_of_masses, Nbin, amin, amax):
     for bi in binaries:
         mp = bi.mass
         ms = (
-            numpy.random.uniform(mmin.value_in(units.MSun), mp.value_in(units.MSun))
+            np.random.uniform(mmin.value_in(units.MSun), mp.value_in(units.MSun))
             | units.MSun
         )
         a = 0.0 | units.au
         e = 0.0
         while bi.radius > a * (1.0 - e):
             a = random_semimajor_axis(amin, amax)
-            e = numpy.sqrt(numpy.random.random())
+            e = np.sqrt(np.random.random())
         print("Orbit a=", a.in_(units.au), "e=", e)
 
         nb = new_binary_orbit(mp, ms, a, e)
@@ -148,81 +152,77 @@ def calculate_orbital_elementss(bi, converter):
     return a, e
 
 
-def new_option_parser():
-    from amuse.units.optparse import OptionParser
-
-    result = OptionParser()
-    result.add_option(
-        "-f", dest="filename", default="Plummer.amuse", help="input filename [%default]"
+def new_argument_parser():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    result.add_option(
-        "-F", dest="outfile", default=None, help="output filename [%default]"
+    parser.add_argument(
+        "-f", "--filename", default="Plummer.amuse", help="input filename"
     )
-    result.add_option(
+    parser.add_argument("-F", "--outfile", default=None, help="output filename")
+    parser.add_argument(
         "--f_binaries",
-        dest="f_binaries",
-        type="float",
+        type=float,
         default=0.5,
-        help="binary fraction [%default]",
+        help="binary fraction",
     )
-    result.add_option(
+    parser.add_argument(
         "-m",
-        unit=units.MSun,
-        type="float",
-        dest="mmin",
+        "--mmin",
+        type=units.MSun,
         default=0 | units.MSun,
-        help="minimum stellar mass for binary [%default]",
+        help="minimum stellar mass for binary",
     )
-    result.add_option(
+    parser.add_argument(
         "-M",
-        unit=units.MSun,
-        type="float",
-        dest="mmax",
+        "--mmax",
+        type=units.MSun,
         default=1000 | units.MSun,
-        help="maximum stellar mass for binary [%default]",
+        help="maximum stellar mass for binary",
     )
-    result.add_option(
+    parser.add_argument(
         "-a",
-        unit=units.au,
-        type="float",
-        dest="amin",
+        "--amin",
+        type=units.au,
         default=1.0 | units.au,
-        help="minimum binary separation [%default]",
+        help="minimum binary separation",
     )
-    result.add_option(
+    parser.add_argument(
         "-A",
-        unit=units.au,
-        type="float",
-        dest="amax",
+        "--amax",
+        type=units.au,
         default=1.0e8 | units.au,
-        help="maximum binary separation [%default]",
+        help="maximum binary separation",
     )
-    result.add_option(
+    parser.add_argument(
         "--seed",
-        dest="seed",
-        type="int",
+        type=int,
         default=None,
-        help="random number seed [%default]",
+        help="random number seed",
     )
-    return result
+    return parser
 
 
-if __name__ in ("__main__", "__plot__"):
-    o, arguments = new_option_parser().parse_args()
-    outfile = o.outfile
+def main():
+    args = new_argument_parser().parse_args()
+    outfile = args.outfile
 
-    if o.outfile == None:
+    if outfile is None:
         outfile = "single_stars_and_binaries.amuse"
 
-    bodies = read_set_from_file(o.filename, "hdf5", close_file=True)
-    stars = bodies[bodies.type == "star"]
-    selected_stars = stars[stars.mass > o.mmin]
-    selected_stars = selected_stars[selected_stars.mass < o.mmax]
-    Nbin = int(o.f_binaries * len(selected_stars))
-    print("Number of stars:", len(stars), len(selected_stars), Nbin)
+    bodies = read_set_from_file(args.filename, close_file=True)
+    stars = bodies[bodies.type.lower() == "star"]
+    selected_stars = stars[stars.mass > args.mmin]
+    selected_stars = selected_stars[selected_stars.mass < args.mmax]
+    Nbin = int(args.f_binaries * len(selected_stars))
+    print(f"Number of stars: {len(stars)} {len(selected_stars)} {Nbin}")
 
-    stars = make_secondaries(selected_stars, Nbin, o.amin, o.amax)
+    stars = make_secondaries(selected_stars, Nbin, args.amin, args.amax)
     time = 0 | units.Myr
     write_set_to_file(
         stars, outfile, "amuse", timestamp=time, append_to_file=False, version="2.0"
     )
+
+
+if __name__ == "__main__":
+    main()

@@ -1,9 +1,3 @@
-from amuse.lab import *
-import sys
-import numpy
-
-# from numpy import cos
-
 """
 Spherical isotropic (Oort) cloud -- initial conditions for a particle set
 
@@ -23,12 +17,15 @@ Initial conditions -- given by distributions of orbital elements:
   equal mass particles.
 """
 
-import numpy
 import argparse
+
+import numpy as np
 
 from amuse.units import units, nbody_system
 from amuse.datamodel import Particles
 from amuse.community.kepler.interface import Kepler
+from amuse.ic.salpeter import new_salpeter_mass_distribution
+from amuse.io import write_set_to_file, read_set_from_file
 
 
 def random_power_min_max(size, x_min, x_max, exp_plus_one):
@@ -37,7 +34,7 @@ def random_power_min_max(size, x_min, x_max, exp_plus_one):
     pdf(x) = const * x**(exp_plus_one-1), x_min <= x <= x_max;
     assuming: x_min < x_max, exp_plus_one != 0
     """
-    r = numpy.random.random(size=size)
+    r = np.random.random(size=size)
     x_min_gamma = x_min**exp_plus_one
     x_max_gamma = x_max**exp_plus_one
     return (x_min_gamma + (x_max_gamma - x_min_gamma) * r) ** (1.0 / exp_plus_one)
@@ -56,10 +53,10 @@ def relative_position_and_velocity_from_orbital_elements(
     """
     position_vectors = []
     velocity_vectors = []
-    converter = nbody_system.nbody_to_si(1 | units.MSun, 1 | units.AU)
+    converter = nbody_system.nbody_to_si(1 | units.MSun, 1 | units.au)
     kepler = Kepler(converter)
     kepler.initialize_code()
-    r_vec = (0.0, 0.0, 0.0) | units.AU
+    r_vec = (0.0, 0.0, 0.0) | units.au
     v_vec = (0.0, 0.0, 0.0) | units.kms
     # to change seed for each particle
     if seed is not None:
@@ -82,7 +79,7 @@ def relative_position_and_velocity_from_orbital_elements(
         vi = kepler.get_velocity_vector()
         # this is to get ~half of the orbits retrograde (that is with inclination
         # of 90--180 degrees) --> velocity = -velocity
-        vel_vec_dir = numpy.random.random()
+        vel_vec_dir = np.random.random()
         if vel_vec_dir <= 0.5:
             vel_orientation = 1.0
         else:
@@ -102,13 +99,13 @@ def ecc_random_power_with_min_peri(n, semi, min_peri, power=2.0):
     with minimum pericenter of min_peri
     for given semi-major axes semi
     """
-    x = numpy.random.power(power, size=n)
+    x = np.random.power(power, size=n)
     peri = semi * (1.0 - x)
-    while numpy.any(peri < min_peri):
+    while np.any(peri < min_peri):
         filter_small_peri = peri < min_peri
         n_new = sum(filter_small_peri)
-        # print "\t updating q", peri.min().in_(units.AU), n_new
-        x_random_new = numpy.random.power(power, size=n_new)
+        # print "\t updating q", peri.min().in_(units.au), n_new
+        x_random_new = np.random.power(power, size=n_new)
         x_new = 1.0 * x
         x_new[filter_small_peri] = x_random_new
         x = 1.0 * x_new
@@ -123,13 +120,13 @@ def ecc_random_power_within_peri_range(n, semi, min_peri, max_peri, power=2.0):
     with minimum pericenter of min_peri
     for given semi-major axes semi
     """
-    x = numpy.random.power(power, size=n)
+    x = np.random.power(power, size=n)
     peri = semi * (1.0 - x)
-    while numpy.any(peri < min_peri) or numpy.any(peri > max_peri):
+    while np.any(peri < min_peri) or np.any(peri > max_peri):
         filter_small_peri = peri < min_peri
         n_new = sum(filter_small_peri)
-        # print "\t updating q", peri.min().in_(units.AU), n_new
-        x_random_new = numpy.random.power(power, size=n_new)
+        # print "\t updating q", peri.min().in_(units.au), n_new
+        x_random_new = np.random.power(power, size=n_new)
         x_new = 1.0 * x
         x_new[filter_small_peri] = x_random_new
         x = 1.0 * x_new
@@ -137,8 +134,8 @@ def ecc_random_power_within_peri_range(n, semi, min_peri, max_peri, power=2.0):
 
         filter_large_peri = peri > max_peri
         n_new = sum(filter_large_peri)
-        # print "\t updating q", peri.min().in_(units.AU), n_new
-        x_random_new = numpy.random.power(power, size=n_new)
+        # print "\t updating q", peri.min().in_(units.au), n_new
+        x_random_new = np.random.power(power, size=n_new)
         x_new = 1.0 * x
         x_new[filter_large_peri] = x_random_new
         x = 1.0 * x_new
@@ -149,9 +146,9 @@ def ecc_random_power_within_peri_range(n, semi, min_peri, max_peri, power=2.0):
 def get_cloud_orbital_elements(
     targetN,
     m_total=0.0 | units.MSun,
-    a_min=3000.0 | units.AU,
-    a_max=100000.0 | units.AU,
-    q_min=32.0 | units.AU,
+    a_min=3000.0 | units.au,
+    a_max=100000.0 | units.au,
+    q_min=32.0 | units.au,
     gamma=-1.5,
 ):
     if q_min is not None:
@@ -163,11 +160,11 @@ def get_cloud_orbital_elements(
         a_min_q_corr = a_min
 
     a_in_au = random_power_min_max(
-        targetN, a_min_q_corr.value_in(units.AU), a_max.value_in(units.AU), gamma + 1.0
+        targetN, a_min_q_corr.value_in(units.au), a_max.value_in(units.au), gamma + 1.0
     )
-    a = a_in_au * 1.0 | units.AU
+    a = a_in_au * 1.0 | units.au
     ecc = ecc_random_power_with_min_peri(targetN, a, q_min, power=2.0)
-    m_comets = (m_total / targetN) * numpy.ones_like(ecc)
+    m_comets = (m_total / targetN) * np.ones_like(ecc)
     return a, ecc, m_comets
 
 
@@ -177,10 +174,10 @@ class SphericalIsotropicCloudWithPlanets(object):
         targetN,
         m_star=1.0 | units.MSun,
         m_cloud=0.0 | units.MSun,
-        a_min=3000.0 | units.AU,
-        a_max=100000.0 | units.AU,
-        q_min=32.0 | units.AU,
-        q_max=100000.0 | units.AU,
+        a_min=3000.0 | units.au,
+        a_max=100000.0 | units.au,
+        q_min=32.0 | units.au,
+        q_max=100000.0 | units.au,
         gamma=-1.5,
         seed=None,
     ):
@@ -204,15 +201,15 @@ class SphericalIsotropicCloudWithPlanets(object):
 
     def new_model(self):
         if self.seed is not None:
-            numpy.random.seed(self.seed)
+            np.random.seed(self.seed)
 
         a_in_au = random_power_min_max(
             self.targetN,
-            self.a_min_q_corr.value_in(units.AU),
-            self.a_max.value_in(units.AU),
+            self.a_min_q_corr.value_in(units.au),
+            self.a_max.value_in(units.au),
             self.gamma + 1.499,
         )
-        a = a_in_au * 1.0 | units.AU
+        a = a_in_au * 1.0 | units.au
         # ecc = ecc_random_power_with_min_peri(self.targetN, a, self.q_min, power=10.)
         ecc = ecc_random_power_within_peri_range(
             self.targetN, a, self.q_min, self.q_max, power=2.0
@@ -227,8 +224,8 @@ class SphericalIsotropicCloudWithPlanets(object):
     pyplot.semilogx()
     pyplot.show()
     """
-        mean_anomaly = 2.0 * numpy.pi * numpy.random.random(size=self.targetN)
-        m_comets = (self.m_cloud / self.targetN) * numpy.ones_like(ecc)
+        mean_anomaly = 2.0 * np.pi * np.random.random(size=self.targetN)
+        m_comets = (self.m_cloud / self.targetN) * np.ones_like(ecc)
 
         position_vectors, velocity_vectors = (
             relative_position_and_velocity_from_orbital_elements(
@@ -304,20 +301,19 @@ def generate_initial_oort_cloud(m_star, n_comets, q_min, q_max, a_min, a_max, se
         seed=seed,
     ).result
 
-    r_time_unit = (1.0 | units.yr) / (2.0 * numpy.pi)
+    r_time_unit = (1.0 | units.yr) / (2.0 * np.pi)
 
     comet_radius = 0.001 | units.RSun
-    cloud_xyz = numpy.empty([n_comets, 8])
+    cloud_xyz = np.empty([n_comets, 8])
     cloud_xyz[:, 0] = cloud.mass.value_in(units.kg)
-    cloud_xyz[:, 1] = comet_radius.value_in(units.AU)
-    cloud_xyz[:, 2] = cloud.x.value_in(units.AU)
-    cloud_xyz[:, 3] = cloud.y.value_in(units.AU)
-    cloud_xyz[:, 4] = cloud.z.value_in(units.AU)
-    cloud_xyz[:, 5] = (cloud.vx * r_time_unit).value_in(units.AU)
-    cloud_xyz[:, 6] = (cloud.vy * r_time_unit).value_in(units.AU)
-    cloud_xyz[:, 7] = (cloud.vz * r_time_unit).value_in(units.AU)
-    print(" ** random cloud : M=", m_star.in_(units.MSun), "N", n_comets, "seed", seed)
-    # print cloud_xyz[:10,:]
+    cloud_xyz[:, 1] = comet_radius.value_in(units.au)
+    cloud_xyz[:, 2] = cloud.x.value_in(units.au)
+    cloud_xyz[:, 3] = cloud.y.value_in(units.au)
+    cloud_xyz[:, 4] = cloud.z.value_in(units.au)
+    cloud_xyz[:, 5] = (cloud.vx * r_time_unit).value_in(units.au)
+    cloud_xyz[:, 6] = (cloud.vy * r_time_unit).value_in(units.au)
+    cloud_xyz[:, 7] = (cloud.vz * r_time_unit).value_in(units.au)
+    print(f" ** random cloud : M={m_star.in_(units.MSun)} N={n_comets} seed={seed}")
 
     return cloud_xyz
 
@@ -340,19 +336,19 @@ def generate_primordial_oort_cloud(m_star, n_comets, q_min, q_max, a_min, a_max,
         seed=seed,
     ).result
 
-    r_time_unit = (1.0 | units.yr) / (2.0 * numpy.pi)
+    r_time_unit = (1.0 | units.yr) / (2.0 * np.pi)
 
     comet_radius = 0.001 | units.RSun
-    cloud_xyz = numpy.empty([n_comets, 8])
+    cloud_xyz = np.empty([n_comets, 8])
     cloud_xyz[:, 0] = cloud.mass.value_in(units.kg)
-    cloud_xyz[:, 1] = comet_radius.value_in(units.AU)
-    cloud_xyz[:, 2] = cloud.x.value_in(units.AU)
-    cloud_xyz[:, 3] = cloud.y.value_in(units.AU)
-    cloud_xyz[:, 4] = cloud.z.value_in(units.AU)
-    cloud_xyz[:, 5] = (cloud.vx * r_time_unit).value_in(units.AU)
-    cloud_xyz[:, 6] = (cloud.vy * r_time_unit).value_in(units.AU)
-    cloud_xyz[:, 7] = (cloud.vz * r_time_unit).value_in(units.AU)
-    print(" ** random cloud : M=", m_star.in_(units.MSun), "N", n_comets, "seed", seed)
+    cloud_xyz[:, 1] = comet_radius.value_in(units.au)
+    cloud_xyz[:, 2] = cloud.x.value_in(units.au)
+    cloud_xyz[:, 3] = cloud.y.value_in(units.au)
+    cloud_xyz[:, 4] = cloud.z.value_in(units.au)
+    cloud_xyz[:, 5] = (cloud.vx * r_time_unit).value_in(units.au)
+    cloud_xyz[:, 6] = (cloud.vy * r_time_unit).value_in(units.au)
+    cloud_xyz[:, 7] = (cloud.vz * r_time_unit).value_in(units.au)
+    print(f" ** random cloud : M={m_star.in_(units.MSun)} N={n_comets} seed={seed}")
     # print cloud_xyz[:10,:]
 
     return cloud_xyz
@@ -381,9 +377,9 @@ def add_comets(star, m_comets, n_comets, q_min, q_max, a_min, a_max, seed):
     comets.x = cloud_xyz[:, 2] | units.au
     comets.y = cloud_xyz[:, 3] | units.au
     comets.z = cloud_xyz[:, 4] | units.au
-    comets.vx = cloud_xyz[:, 5] | 2 * numpy.pi * units.au / units.yr
-    comets.vy = cloud_xyz[:, 6] | 2 * numpy.pi * units.au / units.yr
-    comets.vz = cloud_xyz[:, 7] | 2 * numpy.pi * units.au / units.yr
+    comets.vx = cloud_xyz[:, 5] | 2 * np.pi * units.au / units.yr
+    comets.vy = cloud_xyz[:, 6] | 2 * np.pi * units.au / units.yr
+    comets.vz = cloud_xyz[:, 7] | 2 * np.pi * units.au / units.yr
 
     comets.position += star.position
     comets.velocity += star.velocity
@@ -391,27 +387,27 @@ def add_comets(star, m_comets, n_comets, q_min, q_max, a_min, a_max, seed):
     return comets
 
 
-def new_option_parser():
-    from amuse.units.optparse import OptionParser
-
-    result = OptionParser()
-    result.add_option(
+def new_argument_parser():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument(
         "-f",
         dest="filename",
         default="starandplanets.amuse",
-        help="input filename [%default]",
+        help="input filename",
     )
-    result.add_option(
-        "-F", dest="outfile", default=None, help="output filename [%default]"
+    parser.add_argument(
+        "-F", dest="outfile", default=None, help="output filename"
     )
-    result.add_option(
+    parser.add_argument(
         "--n_comets",
         dest="n_comets",
         type="int",
         default=100,
-        help="number of comets [%default]",
+        help="number of comets",
     )
-    result.add_option(
+    parser.add_argument(
         "--m_comets",
         unit=units.MEarth,
         dest="m_comets",
@@ -419,88 +415,87 @@ def new_option_parser():
         default=0 | units.MEarth,
         help="mass of all comets for a 1MSun star[%default]",
     )
-    result.add_option(
+    parser.add_argument(
         "--seed",
         dest="seed",
         type="int",
         default=None,
-        help="random number seed [%default]",
+        help="random number seed",
     )
-    result.add_option(
+    parser.add_argument(
         "--q_min",
         unit=units.au,
         dest="q_min",
         type="float",
         default=32 | units.au,
-        help="initial minimal pericenter distance [%default]",
+        help="initial minimal pericenter distance",
     )
-    result.add_option(
+    parser.add_argument(
         "--q_max",
         unit=units.au,
         dest="q_max",
         type="float",
         default=100000.0 | units.au,
-        help="initial maximum pericenter distance [%default]",
+        help="initial maximum pericenter distance",
     )
-    result.add_option(
+    parser.add_argument(
         "--a_min",
         unit=units.au,
         dest="a_min",
         type="float",
         default=3000.0 | units.au,
-        help="initial maximum distance [%default]",
+        help="initial maximum distance",
     )
-    result.add_option(
+    parser.add_argument(
         "--a_max",
         unit=units.au,
         dest="a_max",
         type="float",
         default=100000.0 | units.au,
-        help="initial maximum distance [%default]",
+        help="initial maximum distance",
     )
-    result.add_option(
+    parser.add_argument(
         "--m_min",
         unit=units.MSun,
         dest="m_min",
         type="float",
         default=0.0 | units.MSun,
-        help="maximum stellar mass with comets [%default]",
+        help="maximum stellar mass with comets",
     )
-    result.add_option(
+    parser.add_argument(
         "--m_max",
         unit=units.MSun,
         dest="m_max",
         type="float",
         default=100.0 | units.MSun,
-        help="maximum stellar mass with comets [%default]",
+        help="maximum stellar mass with comets",
     )
-    return result
+    return parser
 
 
-if __name__ in ("__main__", "__plot__"):
-    o, arguments = new_option_parser().parse_args()
-    outfile = o.outfile
+def main():
+    args = new_argument_parser().parse_args()
+    outfile = args.outfile
 
-    if o.outfile == None:
-        outfile = "sun_and_comets_N{0:01}.amuse".format(o.n_comets)
+    if outfile is None:
+        outfile = f"sun_and_comets_N{args.n_comets:01}.amuse"
 
-    bodies = read_set_from_file(o.filename, "hdf5", close_file=True)
+    bodies = read_set_from_file(args.filename, "hdf5", close_file=True)
     stars = bodies[bodies.type == "star"]
-    selected_stars = stars.select(lambda m: m > o.m_min, ["mass"])
-    selected_stars = selected_stars.select(lambda m: m <= o.m_max, ["mass"])
+    selected_stars = stars.select(lambda m: m > args.m_min, ["mass"])
+    selected_stars = selected_stars.select(lambda m: m <= args.m_max, ["mass"])
     print("Number of stars:", len(stars), len(selected_stars))
 
     for si in selected_stars:
-        m_comets = o.m_comets * si.mass.value_in(units.MSun)
-        n_comets = int(o.n_comets * si.mass.value_in(units.MSun))
+        m_comets = args.m_comets * si.mass.value_in(units.MSun)
+        n_comets = int(args.n_comets * si.mass.value_in(units.MSun))
         comets = add_comets(
-            si, m_comets, n_comets, o.q_min, o.q_max, o.a_min, o.a_max, o.seed
+            si, m_comets, n_comets, args.q_min, args.q_max, args.a_min, args.a_max, args.seed
         )
         bodies.add_particles(comets)
     bodies.move_to_center()
     print(bodies)
 
-    index = 0
     time = 0 | units.Myr
     write_set_to_file(
         bodies, outfile, "amuse", timestamp=time, append_to_file=False, version="2.0"

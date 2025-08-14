@@ -1,11 +1,15 @@
-from amuse.lab import *
 import numpy
+import argparse
 import logging
 
+from amuse.units import units, constants
+from amuse.units.trigo import sin
+from amuse.datamodel import Particle
+from amuse.io import read_set_from_file, write_set_to_file
+from amuse.ext.orbital_elements import new_binary_from_orbital_elements
 
-def True_anomaly_from_mean_anomaly(Ma, e):
-    from math import sin
 
+def true_anomaly_from_mean_anomaly(Ma, e):
     Ta = (
         Ma
         + (2 * e - e**3 / 4.0) * sin(Ma)
@@ -62,9 +66,7 @@ def add_secondaries(
         mp = bi.mass
         ms = masses[i]
 
-        from amuse.ext.orbital_elements import new_binary_from_orbital_elements
-
-        Ta = True_anomaly_from_mean_anomaly(numpy.deg2rad(mean_anomaly), eccentricity)
+        Ta = true_anomaly_from_mean_anomaly(numpy.deg2rad(mean_anomaly), eccentricity)
         nb = new_binary_from_orbital_elements(
             mp,
             ms,
@@ -111,125 +113,123 @@ def calculate_orbital_elementss(bi, converter):
     return a, e
 
 
-def new_option_parser():
-    from amuse.units.optparse import OptionParser
-
-    result = OptionParser()
-    result.add_option(
-        "-f", dest="filename", default="Plummer.amuse", help="input filename [%default]"
+def new_argument_parser():
+    result = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    result.add_option(
-        "-F", dest="outfile", default=None, help="output filename [%default]"
+    result.add_argument(
+        "-f",
+        "--filename", default="Plummer.amuse", help="input filename"
     )
-    result.add_option(
+    result.add_argument(
+        "-F",
+        "--outfile", default=None, help="output filename"
+    )
+    result.add_argument(
         "--name",
-        dest="name",
         default="ABAuriga",
-        help="name of the star that recieves companion [%default]",
+        help="name of the star that recieves companion",
     )
-    result.add_option(
+    result.add_argument(
         "--cname",
-        dest="companion_name",
+        "--companion_name",
         default="ABAur_b",
-        help="name of the companion [%default]",
+        help="name of the companion",
     )
-    result.add_option(
-        "--ctype", dest="ctype", default="star", help="type of the companion [%default]"
+    result.add_argument(
+        "--ctype",
+        default="star",
+        help="type of the companion"
     )
-    result.add_option(
+    result.add_argument(
         "-m",
-        unit=units.MSun,
-        type="float",
-        dest="mass",
+        "--mass",
+        type=units.MSun,
         default=0 | units.MSun,
-        help="binary companion mass [%default]",
+        help="binary companion mass",
     )
-    result.add_option(
+    result.add_argument(
         "-q",
-        type="float",
-        dest="q_companion",
+        "--q_companion",
+        type=float,
         default=-1,
-        help="binary companion mass ratio [%default]",
+        help="binary companion mass ratio",
     )
-    result.add_option(
+    result.add_argument(
         "-a",
-        unit=units.au,
-        type="float",
-        dest="semimajor_axis",
+        "--semimajor_axis",
+        type=units.au,
         default=1.0 | units.au,
-        help="binary separation [%default]",
+        help="binary separation",
     )
-    result.add_option(
+    result.add_argument(
         "-e",
-        type="float",
         dest="eccentricity",
+        type=float,
         default=0.0,
-        help="binary eccenticity [%default]",
+        help="binary eccenticity",
     )
-    result.add_option(
+    result.add_argument(
         "-i",
-        type="float",
-        dest="inclination",
+        "--inclination",
+        type=float,
         default=0.0,
-        help="inclination [%default]",
+        help="inclination",
     )
-    result.add_option(
+    result.add_argument(
         "--ma",
-        type="float",
-        dest="mean_anomaly",
+        "--mean_anomaly",
+        type=float,
         default=0.0,
-        help="mean anomaly[%default]",
+        help="mean anomaly",
     )
-    result.add_option(
+    result.add_argument(
         "--LoAn",
-        type="float",
-        dest="LoAn",
+        type=float,
         default=0.0,
-        help="Longitude of the ascending node [%default]",
+        help="Longitude of the ascending node",
     )
-    result.add_option(
+    result.add_argument(
         "--Aop",
-        type="float",
-        dest="Aop",
+        type=float,
         default=0.0,
-        help="Argument of pericenter, [%default]",
+        help="Argument of pericenter",
     )
-    result.add_option(
+    result.add_argument(
         "--seed",
-        dest="seed",
-        type="int",
+        type=int,
         default=None,
-        help="random number seed [%default]",
+        help="random number seed",
     )
     return result
 
 
 if __name__ in ("__main__", "__plot__"):
-    o, arguments = new_option_parser().parse_args()
-    outfile = o.outfile
+    args = new_argument_parser().parse_args()
+    outfile = args.outfile
 
-    if o.outfile == None:
+    if outfile is None:
         outfile = "stars_with_companion.amuse"
 
-    bodies = read_set_from_file(o.filename, "hdf5", close_file=True)
-    selected_stars = bodies[bodies.name == o.name]
+    bodies = read_set_from_file(args.filename, close_file=True)
+    selected_stars = bodies[bodies.name == args.name]
 
-    if o.q_companion > 0:
-        mass = selected_stars.mass * o.q_companion
+    if args.q_companion > 0:
+        mass = selected_stars.mass * args.q_companion
     else:
         mass = numpy.zeros(len(selected_stars)) | units.MSun
-        mass += o.mass
+        mass += args.mass
     stars = add_secondaries(
         selected_stars,
-        o.companion_name,
+        args.companion_name,
         mass,
-        o.semimajor_axis,
-        o.eccentricity,
-        o.inclination,
-        o.mean_anomaly,
-        o.LoAn,
-        o.Aop,
-        o.ctype,
+        args.semimajor_axis,
+        args.eccentricity,
+        args.inclination,
+        args.mean_anomaly,
+        args.LoAn,
+        args.Aop,
+        args.ctype,
     )
     print(stars[1])
     bodies.add_particle(stars[1].as_set())

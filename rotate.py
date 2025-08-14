@@ -1,66 +1,18 @@
-import numpy
-import os.path
-from amuse.lab import *
+import sys
+import argparse
+import numpy as np
 
-
-def new_rotation_matrix_from_euler_angles(phi, theta, chi):
-    cosp = numpy.cos(phi)
-    sinp = numpy.sin(phi)
-    cost = numpy.cos(theta)
-    sint = numpy.sin(theta)
-    cosc = numpy.cos(chi)
-    sinc = numpy.sin(chi)
-    # see wikipedia: http://en.wikipedia.org/wiki/Rotation_matrix
-    return numpy.array(
-        [
-            [
-                cost * cosc,
-                -cosp * sinc + sinp * sint * cosc,
-                sinp * sinc + cosp * sint * cosc,
-            ],
-            [
-                cost * sinc,
-                cosp * cosc + sinp * sint * sinc,
-                -sinp * cosc + cosp * sint * sinc,
-            ],
-            [-sint, sinp * cost, cosp * cost],
-        ]
-    )
-
-
-def rotate(position, velocity, phi, theta, psi):  # theta and phi in radians
-    Runit = position.unit
-    Vunit = velocity.unit
-    matrix = new_rotation_matrix_from_euler_angles(phi, theta, psi)
-    return (
-        numpy.dot(matrix, position.value_in(Runit)) | Runit,
-        numpy.dot(matrix, velocity.value_in(Vunit)) | Vunit,
-    )
-
-
-# select Eurler angles randomly.
+from amuse.datamodel.rotation import rotate
+from amuse.units.trigo import pi, arccos
+from amuse.units import nbody_system, units
+from amuse.io import write_set_to_file, read_set_from_file
 
 
 def random_Euler_angles():
-    phi = 2 * numpy.pi * numpy.random.random()
-    theta = numpy.arccos(1 - 2 * numpy.random.random())
-    chi = 2 * numpy.pi * numpy.random.random()
+    phi = 2 * pi * np.random.random()
+    theta = arccos(1 - 2 * np.random.random())
+    chi = 2 * pi * np.random.random()
     return phi, theta, chi
-
-
-def rotate_particle_set(bodies, phi, theta, chi):
-
-    for bi in bodies:
-        x_rot, v_rot = rotate(
-            bi.position,
-            bi.velocity,
-            numpy.deg2rad(phi),
-            numpy.deg2rad(theta),
-            numpy.deg2rad(chi),
-        )
-        bi.position = x_rot
-        bi.velocity = v_rot
-    return bodies
 
 
 def test_rotate(phi, theta, chi):
@@ -71,7 +23,7 @@ def test_rotate(phi, theta, chi):
         1000, convert_nbody=converter, Rmin=1, Rmax=100, q_out=1.0, discfraction=0.01
     ).result
 
-    disk = rotate_particle_set(disk, phi, theta, chi)
+    rotate(disk, phi, theta, chi)
 
     from matplotlib import pyplot
 
@@ -87,69 +39,68 @@ def test_rotate(phi, theta, chi):
 
 def rotate_bodies_isotropically(particles):
     phi, theta, chi = random_Euler_angles()
-    phi = numpy.rad2deg(phi)
-    theta = numpy.rad2deg(theta)
-    chi = numpy.rad2deg(chi)
-    disk = rotate_particle_set(particles, phi, theta, chi)
-    return disk
+    phi = np.rad2deg(phi)
+    theta = np.rad2deg(theta)
+    chi = np.rad2deg(chi)
+    rotate(particles, phi, theta, chi)
+    return particles
 
 
 def rotate_minor_bodies_around_star(star, bodies):
     disk = bodies[bodies.host == star.key]
-    print(disk)
     disk.position -= star.position
     disk.velocity -= star.velocity
-    disk = rotate_bodies_isotropically(disk)
+    rotate_bodies_isotropically(disk)
     disk.position += star.position
     disk.velocity += star.velocity
 
 
-def new_option_parser():
-    from amuse.units.optparse import OptionParser
-
-    result = OptionParser()
-    result.add_option(
-        "-f", dest="filename", default=None, help="input filename [%default]"
+def new_argument_parser():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    result.add_option(
-        "-F", dest="outfile", default=None, help="output filename [%default]"
+    parser.add_argument(
+        "-f", "--filename", default=None, help="input filename"
     )
-    result.add_option(
+    parser.add_argument(
+        "-F", "--outfile", default=None, help="output filename"
+    )
+    parser.add_argument(
         "-p",
-        dest="phi",
-        type="float",
-        default=None,
-        help="rotate under x-axis [%default]",
+        "--phi",
+        type=units.deg,
+        default=0.0 | units.deg,
+        help="rotate under x-axis",
     )
-    result.add_option(
+    parser.add_argument(
         "-t",
-        dest="theta",
-        type="float",
-        default=-62.5,
-        help="rotate under y-axis [%default]",
+        "--theta",
+        type=units.deg,
+        default=-62.5 | units.deg,
+        help="rotate under y-axis",
     )
-    result.add_option(
-        "--type", dest="rotate_type", default="", help="rotate particle type [%default]"
+    parser.add_argument(
+        "--type", "--rotate_type", default="", help="rotate particle type"
     )
-    result.add_option(
+    parser.add_argument(
         "-c",
-        dest="chi",
-        type="float",
-        default=0.0,
-        help="rotate under z-axis [%default]",
+        "--chi",
+        type=units.deg,
+        default=0.0 | units.deg,
+        help="rotate under z-axis",
     )
-    return result
+    return parser
 
 
-if __name__ in ("__main__", "__plot__"):
-    o, arguments = new_option_parser().parse_args()
-    if o.filename == None:
-        test_rotate(o.phi, o.theta, o.chi)
-        exit
+def main():
+    args = new_argument_parser().parse_args()
+    if args.filename is None:
+        test_rotate(args.phi, args.theta, args.chi)
+        sys.exit()
 
-    bodies = read_set_from_file(o.filename, "hdf5", close_file=True)
-    if len(o.rotate_type) > 0:
-        stars = bodies[bodies.type == o.rotate_type]
+    bodies = read_set_from_file(args.filename, close_file=True)
+    if len(args.rotate_type) > 0:
+        stars = bodies[bodies.type == args.rotate_type]
         for star in stars:
             rotate_minor_bodies_around_star(star, bodies)
     else:
@@ -157,27 +108,27 @@ if __name__ in ("__main__", "__plot__"):
         comv = bodies.center_of_mass_velocity()
         bodies.move_to_center()
 
-        if o.phi == None:
+        if args.phi is None:
             phi, theta, chi = random_Euler_angles()
-            phi = numpy.rad2deg(phi)
-            theta = numpy.rad2deg(theta)
-            chi = numpy.rad2deg(chi)
-            print("rotate randomly to (phi, theta, chi):", phi, theta, chi)
+            print(f"rotate randomly to (phi, theta, chi): {phi} {theta} {chi}")
         else:
-            phi = o.phi
-            theta = o.theta
-            chi = o.chi
+            phi = args.phi
+            theta = args.theta
+            chi = args.chi
 
-        bodies = rotate_particle_set(bodies, phi, theta, chi)  # takes angles in degrees
+        rotate(bodies, phi, theta, chi)  # takes angles in degrees
         bodies.position += com
         bodies.velocity += comv
 
-    if o.outfile == None:
+    if args.outfile is None:
         outfile = "particles_rotated.amuse"
     else:
-        outfile = o.outfile
-    index = 0
+        outfile = args.outfile
     time = 0 | units.Myr
     write_set_to_file(
         bodies, outfile, "amuse", timestamp=time, overwrite_file=True, version="2.0"
     )
+
+
+if __name__ == "__main__":
+    main()

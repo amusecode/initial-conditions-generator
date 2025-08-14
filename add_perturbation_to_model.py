@@ -1,98 +1,97 @@
-from amuse.lab import *
-import sys
-import numpy
+import argparse
+
+import numpy as np
+
+from amuse.units import units
+from amuse.io import write_set_to_file, read_set_from_file
 
 
-def new_option_parser():
-    from amuse.units.optparse import OptionParser
-
-    result = OptionParser()
-    result.add_option(
-        "-f", dest="filename", default=None, help="input filename [%default]"
+def new_argument_parser():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    result.add_option(
-        "-F", dest="outfile", default=None, help="output filename [%default]"
+    parser.add_argument(
+        "-f", "--filename", default=None, help="input filename"
     )
-    result.add_option(
+    parser.add_argument(
+        "-F", "--outfile", default=None, help="output filename"
+    )
+    parser.add_argument(
         "--perturbation",
-        dest="perturbation",
-        type="float",
+        type=float,
         default=-8.0,
-        help="log of the perturbation introduced [%default]",
+        help="log of the perturbation introduced",
     )
-    result.add_option(
+    parser.add_argument(
         "--parameter",
-        dest="parameter",
         default="x",
-        help="parameter to be perturbed [%default]",
+        help="parameter to be perturbed",
     )
-    result.add_option(
+    parser.add_argument(
         "--key",
-        dest="key",
-        type="int",
-        default=-0.1,
-        help="key of the star to be perturbed [%default]",
-    )
-    result.add_option(
-        "--name", dest="name", default="", help="name the perturbed star [%default]"
-    )
-    result.add_option(
-        "--seed",
-        dest="seed",
-        type="int",
+        type=int,
         default=-1,
-        help="random number seed [%default]",
+        help="key of the star to be perturbed",
     )
-    return result
+    parser.add_argument(
+        "--name", default="", help="name the perturbed star"
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=-1,
+        help="random number seed",
+    )
+    return parser
 
 
-if __name__ in ("__main__", "__plot__"):
-    o, arguments = new_option_parser().parse_args()
-    if o.seed > 0:
-        numpy.random.seed(o.seed)
+def main():
+    args = new_argument_parser().parse_args()
+    if args.seed > 0:
+        np.random.seed(args.seed)
     else:
         print("random number seed from clock.")
 
-    bodies = read_set_from_file(o.filename, "amuse", close_file=True)
-    if o.key > 0:
-        perturber = bodies[bodies.key == o.key]
+    bodies = read_set_from_file(args.filename, close_file=True)
+    if args.key > 0:
+        perturber = bodies[bodies.key == args.key]
     else:
         perturber = bodies.random_sample(1)
 
-    if o.parameter == "x":
+    if args.parameter == "x":
         unit = perturber.x.unit
-        perturber.x += 10 ** (o.perturbation) | unit
-    elif o.parameter == "y":
+        perturber.x += 10 ** (args.perturbation) | unit
+    elif args.parameter == "y":
         unit = perturber.y.unit
-        perturber.y += 10 ** (o.perturbation) | unit
-    elif o.parameter == "z":
+        perturber.y += 10 ** (args.perturbation) | unit
+    elif args.parameter == "z":
         unit = perturber.z.unit
-        perturber.z += 10 ** (o.perturbation) | unit
-    elif o.parameter == "vx":
+        perturber.z += 10 ** (args.perturbation) | unit
+    elif args.parameter == "vx":
         unit = perturber.vx.unit
-        perturber.vx += 10 ** (o.perturbation) | unit
-    elif o.parameter == "vy":
+        perturber.vx += 10 ** (args.perturbation) | unit
+    elif args.parameter == "vy":
         unit = perturber.vy.unit
-        perturber.vy += 10 ** (o.perturbation) | unit
-    elif o.parameter == "vz":
+        perturber.vy += 10 ** (args.perturbation) | unit
+    elif args.parameter == "vz":
         unit = perturber.vz.unit
-        perturber.vz += 10 ** (o.perturbation) | unit
-    elif o.parameter == "mass":
+        perturber.vz += 10 ** (args.perturbation) | unit
+    elif args.parameter == "mass":
         unit = perturber.mass.unit
-        perturber.mass += 10 ** (o.perturbation) | unit
+        perturber.mass += 10 ** (args.perturbation) | unit
 
-    if len(o.name) > 0:
-        perturber.name = o.name
+    if len(args.name) > 0:
+        perturber.name = args.name
 
     time = 0 | units.Myr
-    if o.outfile == None:
-        namelist = o.filename.split(".")
-        namelist[-2] = namelist[-2] + ".pert_" + o.parameter + str(int(o.perturbation))
+    if args.outfile is None:
+        namelist = args.filename.split(".")
+        namelist[-2] = f"{namelist[-2]}.pert_{args.parameter}{int(args.perturbation)}"
         filename = namelist[0]
         for ni in namelist[1:]:
             filename += "." + ni
     else:
-        filename = o.outfile
+        filename = args.outfile
 
     write_set_to_file(
         bodies, filename, "amuse", timestamp=time, append_to_file=False, version="2.0"

@@ -1,17 +1,22 @@
-import numpy
 import os
 import requests
-from math import pi, sin, cos, atan2, sqrt
+import argparse
 
+import numpy as np
+import matplotlib.pyplot as plt
+
+from amuse.plot import scatter
+from amuse.units.trigo import pi, sin, cos, atan2, sqrt
 from amuse.units import units, nbody_system, constants
 from amuse.datamodel import Particles, Particle
 from amuse.community.kepler.interface import Kepler
-from amuse.lab import read_set_from_file, write_set_to_file
+from amuse.io import read_set_from_file, write_set_to_file
 from amuse.ext.solarsystem import solar_system_in_time
+from amuse.ext.orbital_elements import new_binary_from_orbital_elements
 
 
 def new_kepler():
-    converter = nbody_system.nbody_to_si(1 | units.MSun, 1 | units.AU)
+    converter = nbody_system.nbody_to_si(1 | units.MSun, 1 | units.au)
     kepler = Kepler(converter)
     kepler.initialize_code()
     return kepler
@@ -46,28 +51,25 @@ def get_position(
     kepler.stop()
 
     a1 = (
-        [numpy.cos(longitude), -numpy.sin(longitude), 0.0],
-        [numpy.sin(longitude), numpy.cos(longitude), 0.0],
+        [cos(longitude), -sin(longitude), 0.0],
+        [sin(longitude), cos(longitude), 0.0],
         [0.0, 0.0, 1.0],
     )
     a2 = (
         [1.0, 0.0, 0.0],
-        [0.0, numpy.cos(incl), -numpy.sin(incl)],
-        [0.0, numpy.sin(incl), numpy.cos(incl)],
+        [0.0, cos(incl), -sin(incl)],
+        [0.0, sin(incl), cos(incl)],
     )
     a3 = (
-        [numpy.cos(argument), -numpy.sin(argument), 0.0],
-        [numpy.sin(argument), numpy.cos(argument), 0.0],
+        [cos(argument), -sin(argument), 0.0],
+        [sin(argument), cos(argument), 0.0],
         [0.0, 0.0, 1.0],
     )
-    A = numpy.dot(numpy.dot(a1, a2), a3)
+    A = np.dot(np.dot(a1, a2), a3)
     print(A, r)
 
-    # old version from P2.7
-    #  r_vec = numpy.dot(A,numpy.reshape(r,3,1))
-    #  v_vec = numpy.dot(A,numpy.reshape(v,3,1))
-    r_vec = numpy.dot(A, numpy.reshape(r, 3, "F"))
-    v_vec = numpy.dot(A, numpy.reshape(v, 3, "F"))
+    r_vec = np.dot(A, np.reshape(r, 3, "F"))
+    v_vec = np.dot(A, np.reshape(v, 3, "F"))
 
     # for relative vectors
     r[0] = r_vec[0]
@@ -80,9 +82,7 @@ def get_position(
     return r, v
 
 
-def True_anomaly_from_mean_anomaly(Ma, e):
-    from math import sin
-
+def true_anomaly_from_mean_anomaly(Ma, e):
     Ta = (
         Ma
         + (2 * e - e**3 / 4.0) * sin(Ma)
@@ -95,7 +95,6 @@ def True_anomaly_from_mean_anomaly(Ma, e):
 def construct_particle_set_from_orbital_elements(
     name, mass, a, ecc, inc, Ma, Aop, LoAn, Mparent=1 | units.MSun
 ):
-
     print(
         "length:", len(a), len(ecc), len(inc), len(Ma), len(Aop), len(LoAn), len(name)
     )
@@ -106,13 +105,9 @@ def construct_particle_set_from_orbital_elements(
     p.type = "asteroid"
     p.host = "Sun"
     p.mass = mass
-    from orbital_elements_to_cartesian import orbital_elements_to_pos_and_vel
-    from orbital_elements_to_cartesian import orbital_period
-
-    from amuse.ext.orbital_elements import new_binary_from_orbital_elements
 
     for i in range(len(p)):
-        Ta = True_anomaly_from_mean_anomaly(numpy.rad2deg(Ma[i]), ecc[i])
+        Ta = true_anomaly_from_mean_anomaly(Ma[i].in_(units.deg), ecc[i])
         b = new_binary_from_orbital_elements(
             Mparent, p[i].mass, a[i], ecc[i], Ta, inc[i], LoAn[i], Aop[i], G=constants.G
         )
@@ -126,13 +121,12 @@ def construct_particle_set_from_orbital_elements(
 
 
 def read_orbital_elements_from_MPCORB(filename="MPCORB.DAT", n=-1):
-    # f = open(fdir+"MPCORB.DAT", "r")
-    a = [] | units.AU
+    a = [] | units.au
     ecc = []
-    inc = []
-    Ma = []
-    Aop = []
-    LoAn = []
+    inc = [] | units.deg
+    Ma = [] | units.deg
+    Aop = [] | units.deg
+    LoAn = [] | units.deg
     classify = []
     name = []
     Nobs = []
@@ -149,12 +143,12 @@ def read_orbital_elements_from_MPCORB(filename="MPCORB.DAT", n=-1):
                 or "D" not in line[105:107]
             ):
                 Nobs.append(int(No))
-                Ma.append(float(line[26:35]))
-                Aop.append(float(line[37:46]))
-                LoAn.append(float(line[48:57]))
-                inc.append(float(line[59:68]))
+                Ma.append(units.deg(line[26:35]))
+                Aop.append(units.deg(line[37:46]))
+                LoAn.append(units.deg(line[48:57]))
+                inc.append(units.deg(line[59:68]))
                 ecc.append(float(line[70:79]))
-                a.append(float(line[92:103]) | units.au)
+                a.append(units.au(line[92:103]))
                 U.append(line[105:107])
                 classify.append(line[161:165])
                 name.append(line[166:194])
@@ -165,13 +159,12 @@ def read_orbital_elements_from_MPCORB(filename="MPCORB.DAT", n=-1):
 
 
 def read_orbital_elements_from_CometEls(filename="CometEls", n=-1):
-    # f = open(fdir+"MPCORB.DAT", "r")
-    a = [] | units.AU
+    a = [] | units.au
     ecc = []
-    inc = []
-    Ma = []
-    Aop = []
-    LoAn = []
+    inc = [] | units.deg
+    Ma = [] | units.deg
+    Aop = [] | units.deg
+    LoAn = [] | units.deg
     classify = []
     name = []
     Nobs = []
@@ -190,13 +183,13 @@ def read_orbital_elements_from_CometEls(filename="CometEls", n=-1):
                 if ecc[-1] == 1:
                     ecc[-1] -= 1.0e-5
                 a.append(p / (1 - ecc[-1]))
-                Aop.append(float(line[51:60]))
-                LoAn.append(float(line[61:70]))
-                inc.append(float(line[71:80]))
+                Aop.append(units.deg(line[51:60]))
+                LoAn.append(units.deg(line[61:70]))
+                inc.append(units.deg(line[71:80]))
                 yop = float(line[14:18])
                 mop = float(line[19:21])
                 dop = float(line[22:29])
-                Ma.append(numpy.random.random() * 360 - 180)
+                Ma.append((np.random.random() * 360 - 180) | units.deg)
                 print(a[-1], ecc[-1], inc[-1], Aop[-1], LoAn[-1])
                 if n > 0 and len(a) >= n:
                     break
@@ -217,22 +210,21 @@ def read_orbital_elements_from_MinorPlanetCenter(filename="MPCORB.DAT", n=-1):
         )
         return name, a, ecc, inc, Ma, Aop, LoAn
 
-    # f = open(fdir+"MPCORB.DAT", "r")
-    a = [] | units.AU
+    a = [] | units.au
     ecc = []
-    inc = []
-    Ma = []
-    Aop = []
-    LoAn = []
+    inc = [] | units.deg
+    Ma = [] | units.deg
+    Aop = [] | units.deg
+    LoAn = [] | units.deg
     name = []
     for line in open(filename):
         print(line)
-        Ma.append(float(line[26:35]))
-        Aop.append(float(line[37:46]))
-        LoAn.append(float(line[48:57]))
-        inc.append(float(line[59:68]))
+        Ma.append(units.deg(line[26:35]))
+        Aop.append(units.deg(line[37:46]))
+        LoAn.append(units.deg(line[48:57]))
+        inc.append(units.deg(line[59:68]))
         ecc.append(float(line[70:79]))
-        a.append(float(line[92:103]) | units.au)
+        a.append(units.au(line[92:103]))
         name.append(line[166:194])
         if n > 0 and len(a) >= n:
             break
@@ -246,7 +238,7 @@ def add_asteroids_to_solar_system(
     # download the asteroid ephemerids file
     if not os.path.isfile(MPC_filename):
         print("download ", MPC_filename)
-        url = "https://www.minorplanetcenter.net/iau/MPCORB/" + MPC_filename
+        url = f"https://www.minorplanetcenter.net/iau/MPCORB/{MPC_filename}"
         datafile = requests.get(url)
         open(MPC_filename, "wb").write(datafile.content)
 
@@ -272,44 +264,40 @@ def new_lunar_system(Julian_date=-1 | units.day):
     return new_lunar_system_in_time(Julian_date)
 
 
-def new_option_parser():
-    from amuse.units.optparse import OptionParser
-
-    result = OptionParser()
-    result.add_option(
-        "-n", dest="n", type="int", default=10, help="number of asteroids [%default]"
+def new_argument_parser():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    result.add_option(
+    parser.add_argument(
+        "-n", "--number_of_asteroids", type=int, default=10, help="number of asteroids"
+    )
+    parser.add_argument(
         "--MPC_filename",
-        dest="MPC_filename",
         default="NEA.txt",
-        help="MPC data filename possibilities include: MPCORB.DAT, NEA.txt, PHA.txt, Distant.txt, Unusual.txt, [%default]",
+        help="MPC data filename possibilities include: MPCORB.DAT, NEA.txt, PHA.txt, Distant.txt, Unusual.txt",
     )
-    result.add_option(
+    parser.add_argument(
         "-f",
-        dest="filename",
+        "--filename",
         default="solar_system.amuse",
-        help="input filename [%default]",
+        help="input filename",
     )
-    result.add_option(
-        "-F", dest="outfile", default=None, help="output filename [%default]"
+    parser.add_argument(
+        "-F", "--outfile", default=None, help="output filename"
     )
-    return result
+    return parser
 
 
-if __name__ in ("__main__", "__plot__"):
-    o, arguments = new_option_parser().parse_args()
+def main():
+    args = new_argument_parser().parse_args()
 
-    solar_system = read_set_from_file(o.filename, "hdf5", close_file=True)
+    solar_system = read_set_from_file(args.filename, close_file=True)
     Julian_date = solar_system.Julian_date
 
     solar_system = add_asteroids_to_solar_system(
-        solar_system, o.MPC_filename, Julian_date, o.n
+        solar_system, args.MPC_filename, Julian_date, args.number_of_asteroids
     )
     print(solar_system)
-
-    from amuse.plot import scatter
-    from matplotlib import pyplot
 
     star = solar_system[solar_system.type == "star"]
     planet = solar_system[solar_system.type == "planet"]
@@ -319,15 +307,19 @@ if __name__ in ("__main__", "__plot__"):
     scatter(planet.x, planet.y, s=30, c="b")
     scatter(moon.x, moon.y, s=10, c="r")
     scatter(asteroid.x, asteroid.y, s=1, c="k")
-    pyplot.show()
+    plt.show()
     print(planet)
 
-    if o.outfile:
+    if args.outfile:
         write_set_to_file(
             solar_system,
-            o.outfile,
+            args.outfile,
             "amuse",
             append_to_file=False,
             overwite_file=True,
             version="2.0",
         )
+
+
+if __name__ == "__main__":
+    main()

@@ -1,125 +1,115 @@
-from amuse.lab import *
-import sys
-import numpy
+import argparse
+import numpy as np
+
+from amuse.units import units
 from amuse.ext.orbital_elements import new_binary_from_orbital_elements
 from amuse.ext.protodisk import ProtoPlanetaryDisk
+from amuse.io import write_set_to_file, read_set_from_file
+
 from make_planets_oligarch import make_planets_oligarch
 from move_bodies_to_stellar_position import move_bodies_to_stellar_position
 
 
-def new_option_parser():
-    from amuse.units.optparse import OptionParser
-
-    result = OptionParser()
-    result.add_option(
-        "-f", dest="filename", default="star.amuse", help="input filename [%default]"
+def new_argument_parser():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    result.add_option(
-        "-F", dest="outfile", default=None, help="output filename [%default]"
+    parser.add_argument(
+        "-f", "--filename", default="star.amuse", help="input filename"
     )
-    result.add_option(
-        "--name", dest="name", default=None, help="Add planets to named star [%default]"
+    parser.add_argument(
+        "-F", "--outfile", default=None, help="output filename"
     )
-    result.add_option(
+    parser.add_argument(
+        "--name", default=None, help="Add planets to named star"
+    )
+    parser.add_argument(
         "--rmin_disk",
-        unit=units.au,
-        dest="rmin_disk",
-        type="float",
+        type=units.au,
         default=1.0 | units.au,
-        help="inner disk radius [%default]",
+        help="inner disk radius",
     )
-    result.add_option(
+    parser.add_argument(
         "--rmax_disk",
-        unit=units.au,
-        dest="rmax_disk",
-        type="float",
+        type=units.au,
         default=100.0 | units.au,
-        help="outer disk radius [%default]",
+        help="outer disk radius",
     )
-    result.add_option(
+    parser.add_argument(
         "--relative_diskmass",
-        dest="relative_diskmass",
-        type="float",
+        type=float,
         default=0.01,
-        help="relative disk mass [%default]",
+        help="relative disk mass",
     )
-    result.add_option(
+    parser.add_argument(
         "--Nplanets",
-        dest="Nplanets",
-        type="int",
+        type=int,
         default=4,
-        help="maximum number of planets [%default]",
+        help="maximum number of planets",
     )
-    result.add_option(
+    parser.add_argument(
         "--fplanets",
-        dest="fplanets",
-        type="float",
+        type=float,
         default=0.5,
-        help="fraction of stars with planets [%default]",
+        help="fraction of stars with planets",
     )
-    result.add_option(
+    parser.add_argument(
         "--mmin",
-        unit=units.MSun,
-        dest="mmin",
-        type="float",
+        type=units.MSun,
         default=-0.1 | units.MSun,
-        help="minimum stellar mass [%default]",
+        help="minimum stellar mass",
     )
-    result.add_option(
+    parser.add_argument(
         "--mmax",
-        unit=units.MSun,
-        dest="mmax",
-        type="float",
+        type=units.MSun,
         default=100 | units.MSun,
-        help="maximum stellar mass [%default]",
+        help="maximum stellar mass",
     )
-    result.add_option(
+    parser.add_argument(
         "--mscale",
-        dest="mscale",
-        type="float",
+        type=float,
         default=1,
-        help="scaling of the planet mass [%default]",
+        help="scaling of the planet mass",
     )
 
-    result.add_option(
+    parser.add_argument(
         "--seed",
-        dest="seed",
-        type="int",
+        type=int,
         default=-1,
-        help="random number seed [%default]",
+        help="random number seed",
     )
-    return result
+    return parser
 
 
-if __name__ in ("__main__", "__plot__"):
-    o, arguments = new_option_parser().parse_args()
+def main():
+    args = new_argument_parser().parse_args()
     accurancy = 0.0001
     planet_density = 3 | units.g / units.cm**3
 
-    if o.seed > 0:
-        numpy.random.seed(o.seed)
+    if args.seed > 0:
+        np.random.seed(args.seed)
     else:
         print("random number seed from clock.")
 
-    bodies = read_set_from_file(o.filename, "hdf5", close_file=True)
+    bodies = read_set_from_file(args.filename, close_file=True)
     print(bodies)
     stars = bodies[bodies.type == "star"]
-    stars = stars[stars.name == o.name]
-    stars = stars[stars.mass >= o.mmin]
-    stars = stars[stars.mass <= o.mmax]
-    if o.fplanets <= 1:
-        nplanets = int(o.fplanets * len(stars))
+    stars = stars[stars.name == args.name]
+    stars = stars[stars.mass >= args.mmin]
+    stars = stars[stars.mass <= args.mmax]
+    if args.fplanets <= 1:
+        nplanets = int(args.fplanets * len(stars))
     else:
-        nplanets = min(len(stars), int(o.fplanets))
+        nplanets = min(len(stars), int(args.fplanets))
     stars_with_planets = stars.random_sample(nplanets)
     print("Number of stars with planets=", len(stars_with_planets))
     for star in stars_with_planets:
-        disk_mass = o.relative_diskmass * star.mass
+        disk_mass = args.relative_diskmass * star.mass
         planets = make_planets_oligarch(
-            star.mass, star.radius, o.rmin_disk, o.rmax_disk, disk_mass
+            star.mass, star.radius, args.rmin_disk, args.rmax_disk, disk_mass
         )
         planets = planets[planets.type == "planet"]
-        while len(planets) > o.Nplanets:
+        while len(planets) > args.Nplanets:
             mmin = planets.mass.min()
             lm_planet = planets[planets.mass <= mmin]
             planets.remove_particle(lm_planet)
@@ -130,25 +120,23 @@ if __name__ in ("__main__", "__plot__"):
         print(planets.position.in_(units.parsec))
         planets.position += star.position
         planets.velocity += star.velocity
-        planets.mass *= o.mscale
+        planets.mass *= args.mscale
         bodies.add_particles(planets)
     move_bodies_to_stellar_position(bodies)
 
     planets = bodies[bodies.type == "planet"]
     for i, planet in enumerate(planets):
         print(
-            "Planet: {0: 3d} , mass: {1: 8.3f}  MEarth, a: {2: 8.2f} au".format(
-                i,
-                planet.mass.value_in(units.MEarth),
-                planet.semimajor_axis.value_in(units.au),
-            )
+            f"Planet: {i: 3d}, "
+            f"mass: {planet.mass.value_in(units.MEarth): 8.3f}  MEarth, "
+            f"a: {planet.semimajor_axis.value_in(units.au): 8.2f} au"
         )
 
     time = 0 | units.Myr
-    if o.outfile == None:
+    if args.outfile is None:
         filename = "added_oligarch_planets.amuse"
     else:
-        filename = o.outfile
+        filename = args.outfile
     write_set_to_file(
         bodies,
         filename,
