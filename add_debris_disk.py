@@ -1,9 +1,11 @@
-from amuse.lab import *
-import sys
-import numpy
+import argparse
+import numpy as np
+
+from amuse.units import units, nbody_system
 from amuse.ext.orbital_elements import new_binary_from_orbital_elements
 from amuse.ext.protodisk import ProtoPlanetaryDisk
 from amuse.couple import bridge
+from amuse.io import write_set_to_file, read_set_from_file
 
 
 def add_debris_disk(
@@ -33,124 +35,110 @@ def add_debris_disk(
     return disk
 
 
-def new_option_parser():
-    from amuse.units.optparse import OptionParser
-
-    result = OptionParser()
-    result.add_option(
-        "-f", dest="filename", default=None, help="input filename [%default]"
+def new_argument_parser():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    result.add_option(
-        "-F", dest="outfile", default=None, help="output filename [%default]"
-    )
-    result.add_option("--name", dest="name", default="Sun", help="disk mass [%default]")
-    result.add_option(
-        "--dname", dest="dname", default="asteroid", help="debris name [%default]"
-    )
-    result.add_option(
-        "--dtype", dest="dtype", default="debris", help="debris type [%default]"
-    )
-    result.add_option(
+    parser.add_argument("-f", "--filename", default=None, help="input filename")
+    parser.add_argument("-F", "--outfile", default=None, help="output filename")
+    parser.add_argument("--name", default="star", help="name of star type")
+    parser.add_argument("--dname", default="asteroid", help="name of disk type")
+    parser.add_argument("--dtype", default="debris", help="type of disk")
+    parser.add_argument(
         "--fdisk",
-        dest="fdisk",
-        type="float",
+        type=float,
         default=-1,
-        help="disk mass fraction [%default]",
+        help="disk mass fraction",
     )
-    result.add_option(
+    parser.add_argument(
         "--Mdisk",
-        dest="Mdisk",
-        type="float",
-        unit=units.MSun,
+        type=units.MSun,
         default=0.01 | units.MSun,
-        help="disk mass [%default]",
+        help="disk mass",
     )
-    result.add_option(
+    parser.add_argument(
         "--mdisk",
-        unit=units.kg,
-        dest="mdisk",
-        type="float",
+        type=units.kg,
         default=0.0 | units.kg,
-        help="mass of individual disk particles [%default]",
+        help="mass of individual disk particles",
     )
-    result.add_option(
+    parser.add_argument(
         "--ndisk",
-        dest="ndisk",
-        type="int",
+        type=int,
         default=100,
-        help="number of disk particles per MSun [%default]",
+        help="number of disk particles per MSun",
     )
-    result.add_option(
+    parser.add_argument(
         "--rmin",
-        unit=units.au,
-        dest="rmin",
-        type="float",
+        type=units.au,
         default=10 | units.au,
-        help="minimal disk radius [%default]",
+        help="minimal disk radius",
     )
-    result.add_option(
+    parser.add_argument(
         "--rmax",
-        unit=units.au,
-        dest="rmax",
-        type="float",
+        type=units.au,
         default=100 | units.au,
-        help="maximal disk radius [%default]",
+        help="maximal disk radius",
     )
-    result.add_option(
-        "-Q", dest="Q", type="float", default=1.0, help="Toomre Q parameter [%default]"
-    )
-    result.add_option(
+    parser.add_argument("-Q", type=float, default=1.0, help="Toomre Q parameter")
+    parser.add_argument(
         "-a",
-        dest="alpha",
-        type="float",
+        "--alpha",
+        type=float,
         default=1.5,
-        help="Disk density profile [%default]",
+        help="Disk density profile",
     )
-    result.add_option(
+    parser.add_argument(
         "--seed",
-        dest="seed",
-        type="int",
+        type=int,
         default=-1,
-        help="random number seed [%default]",
+        help="random number seed",
     )
-    return result
+    return parser
 
 
-if __name__ in ("__main__", "__plot__"):
-    o, arguments = new_option_parser().parse_args()
+def main():
+    args = new_argument_parser().parse_args()
 
-    if o.seed > 0:
-        numpy.random.seed(o.seed)
+    if args.seed > 0:
+        np.random.seed(args.seed)
     else:
         print("random number seed from clock.")
 
-    bodies = read_set_from_file(o.filename, "hdf5", close_file=True)
-    stars = bodies[bodies.name == o.name]
+    bodies = read_set_from_file(args.filename, close_file=True)
+    stars = bodies[bodies.name == args.name]
     if len(stars) == 0:
-        stars = bodies[bodies.name == "star"]
-    if len(stars) == 0:
-        stars = bodies[bodies.name == "SUN"]
-    if len(stars) == 0:
-        stars = bodies[bodies.type == "star"]
+        stars = bodies[bodies.type.lower() in ["star", "sun"]]
 
     for star in stars:
-        if o.fdisk < 0:
-            fdisk = o.Mdisk / star.mass
+        if args.fdisk < 0:
+            fdisk = args.Mdisk / star.mass
         else:
-            fdisk = o.fdisk
+            fdisk = args.fdisk
         debris = add_debris_disk(
-            star, o.ndisk, fdisk, o.mdisk, o.rmin, o.rmax, o.alpha, o.Q
+            star,
+            args.ndisk,
+            fdisk,
+            args.mdisk,
+            args.rmin,
+            args.rmax,
+            args.alpha,
+            args.Q,
         )
-        debris.name = o.dname
-        debris.type = o.dtype
+        debris.name = args.dname
+        debris.type = args.dtype
         bodies.add_particles(debris)
         bodies.move_to_center()
 
     time = 0 | units.Myr
-    if o.outfile == None:
+    if args.outfile is None:
         filename = "added_debris_disk.amuse"
     else:
-        filename = o.outfile
+        filename = args.outfile
     write_set_to_file(
         bodies, filename, "amuse", timestamp=time, append_to_file=False, version="2.0"
     )
+
+
+if __name__ == "__main__":
+    main()
