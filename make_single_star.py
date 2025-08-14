@@ -1,7 +1,11 @@
-from amuse.lab import *
-import sys
 import numpy
 import csv
+import argparse
+
+from amuse.units import units
+from amuse.datamodel import Particle, Particles
+from amuse.community.seba import Seba
+from amuse.io import read_set_from_file, write_set_to_file
 
 
 def read_Gaia_database(filename, index=0, age=0 | units.Myr):
@@ -26,7 +30,7 @@ def read_Gaia_database(filename, index=0, age=0 | units.Myr):
                 ) | units.kms
                 break
             i += 1
-    s = SeBa()
+    s = Seba()
     s.particles.add_particle(star)
     s.evolve_model(age)
     star.mass = s.particles[0].mass
@@ -48,18 +52,14 @@ def Hill_radius(Mstar, a, Mplanet):
     return a * (Mplanet / (3.0 * Mstar)) ** (1.0 / 3.0)
 
 
-def determine_orbital_elements(solar_system):
-    from amuse.ext.orbital_elements import new_binary_from_orbital_elements
-
-
-def make_single_star(m_star, radius, age, name):
+def make_single_star(mass_star, radius, age, name):
     star = Particle()
-    star.ZAMS_mass = m_star
-    star.mass = m_star
+    star.ZAMS_mass = mass_star
+    star.mass = mass_star
     star.name = name
     star.type = "star"
     if radius < 0 | units.RSun:
-        s = SeBa()
+        s = Seba()
         s.particles.add_particle(star)
         s.evolve_model(age)
         star.mass = s.particles[0].mass
@@ -67,99 +67,91 @@ def make_single_star(m_star, radius, age, name):
         s.stop()
     else:
         star.radius = radius
-    star.position = (0, 0, 0) | units.AU
+    star.position = (0, 0, 0) | units.au
     star.velocity = (0, 0, 0) | units.kms
     return star
 
 
-def new_option_parser():
-    from amuse.units.optparse import OptionParser
-
-    result = OptionParser()
-    result.add_option(
-        "-f", dest="filename", default=None, help="input filename [%default]"
+def new_argument_parser():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    result.add_option(
-        "-F", dest="outfile", default="star.amuse", help="output filename [%default]"
-    )
-    result.add_option(
+    parser.add_argument("-f", "--filename", default=None, help="input filename")
+    parser.add_argument("-F", "--outfile", default="star.amuse", help="output filename")
+    parser.add_argument(
         "-M",
-        unit=units.MSun,
-        dest="m_star",
-        type="float",
+        "--mass_star",
+        type=units.MSun,
         default=1 | units.MSun,
-        help="stellar mass [%default]",
+        help="stellar mass",
     )
-    result.add_option(
+    parser.add_argument(
         "-R",
-        unit=units.RSun,
-        dest="r_star",
-        type="float",
+        "--radius_star",
+        type=units.RSun,
         default=-1.0 | units.RSun,
-        help="stellar radius [%default]",
+        help="stellar radius",
     )
-    result.add_option(
+    parser.add_argument(
         "-t",
-        unit=units.Myr,
-        dest="age",
-        type="float",
+        "--age",
+        type=units.Myr,
         default=0.0 | units.Myr,
-        help="stellar age [%default]",
+        help="stellar age",
     )
-    result.add_option(
+    parser.add_argument(
         "--gaia_database_file",
-        dest="gaia_database_file",
-        # default = "/home/spz/Lib/Catalog/Gaia_NearbyStars/pos_vel_stars_10pc.csv",
-        default="/home/spz/Lib/Catalog/Gaia_NearbyStars/gaia_nearby_stars.amuse",
-        help="Gaia database dir and filename [%default]",
+        default="gaia_nearby_stars.amuse",
+        help="Gaia database dir and filename",
     )
-    result.add_option(
+    parser.add_argument(
         "--gaia_database_index",
-        type="int",
-        dest="gaia_database_index",
+        type=int,
         default=-1,
-        help="Gaia database index [%default]",
+        help="Gaia database index",
     )
-    result.add_option(
-        "--name", dest="name", default="star", help="stellar name [%default]"
-    )
-    result.add_option(
+    parser.add_argument("--name", default="star", help="stellar name")
+    parser.add_argument(
         "--seed",
-        dest="seed",
-        type="int",
+        type=int,
         default=-1,
-        help="random number seed [%default]",
+        help="random number seed",
     )
-    return result
+    return parser
 
 
-if __name__ in ("__main__", "__plot__"):
-    o, arguments = new_option_parser().parse_args()
-    if o.seed > 0:
-        numpy.random.seed(o.seed)
+def main():
+    args = new_argument_parser().parse_args()
+    if args.seed > 0:
+        numpy.random.seed(args.seed)
     else:
         print("random number seed from clock.")
 
     bodies = Particles(0)
-    if o.gaia_database_index > 0:
-        if ".amuse" in o.gaia_database_file:
-            new_bodies = read_particle(o.gaia_database_file, o.gaia_database_index)
+    if args.gaia_database_index > 0:
+        if ".amuse" in args.gaia_database_file:
+            new_bodies = read_particle(
+                args.gaia_database_file, args.gaia_database_index
+            )
             print(new_bodies)
-        elif ".csv" in o.gaia_database_file:
-            new_bodies = read_Gaia_database(o.gaia_database_file, o.gaia_database_index)
+        elif ".csv" in args.gaia_database_file:
+            new_bodies = read_Gaia_database(
+                args.gaia_database_file, args.gaia_database_index
+            )
         else:
-            print("Unrecognized input filename: ", o.gaia_database_file)
+            print("Unrecognized input filename: ", args.gaia_database_file)
 
     else:
-        new_bodies = make_single_star(o.m_star, o.r_star, o.age, o.name)
+        new_bodies = make_single_star(
+            args.mass_star, args.radius_star, args.age, args.name
+        )
     bodies.add_particle(new_bodies)
 
-    index = 0
     time = 0 | units.Myr
-    if o.outfile == None:
-        filename = "star.amuse".format(index)
+    if args.outfile is None:
+        filename = "star.amuse"
     else:
-        filename = o.outfile
+        filename = args.outfile
     write_set_to_file(
         bodies,
         filename,
@@ -169,3 +161,7 @@ if __name__ in ("__main__", "__plot__"):
         append_to_file=False,
         version="2.0",
     )
+
+
+if __name__ == "__main__":
+    main()
