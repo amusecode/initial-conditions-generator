@@ -1,6 +1,11 @@
-from amuse.lab import *
-import sys
-import numpy
+import argparse
+
+import numpy as np
+
+from amuse.units import units, nbody_system
+from amuse.ic.plummer import new_plummer_model
+from amuse.ic.salpeter import new_salpeter_mass_distribution
+from amuse.io import write_set_to_file, read_set_from_file
 
 
 def make_plummer_sphere(nstars, masses, name, converter):
@@ -12,92 +17,77 @@ def make_plummer_sphere(nstars, masses, name, converter):
     return stars
 
 
-def new_option_parser():
-    from amuse.units.optparse import OptionParser
-
-    result = OptionParser()
-    result.add_option(
-        "-f", dest="filename", default=None, help="input filename [%default]"
+def new_argument_parser():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    result.add_option(
-        "-F", dest="outfile", default=None, help="output filename [%default]"
-    )
-    result.add_option(
+    parser.add_argument("-f", "--filename", default=None, help="input filename")
+    parser.add_argument("-F", "--outfile", default=None, help="output filename")
+    parser.add_argument(
         "--nstars",
-        dest="nstars",
-        type="int",
+        type=int,
         default=100,
-        help="number of stars [%default]",
+        help="number of stars",
     )
-    result.add_option(
+    parser.add_argument(
         "--mass",
-        unit=units.MSun,
-        dest="mass",
-        type="float",
+        type=units.MSun,
         default=1 | units.MSun,
-        help="total cluster mass [%default]",
+        help="total cluster mass",
     )
-    result.add_option(
+    parser.add_argument(
         "--mmin",
-        unit=units.MSun,
-        dest="mmin",
-        type="float",
-        default=-0.1 | units.MSun,
-        help="minimum stellar mass [%default]",
+        type=units.MSun,
+        default=0.1 | units.MSun,
+        help="minimum stellar mass",
     )
-    result.add_option(
+    parser.add_argument(
         "--mmax",
-        unit=units.MSun,
-        dest="mmax",
-        type="float",
+        type=units.MSun,
         default=100 | units.MSun,
-        help="maximum stellar mass [%default]",
+        help="maximum stellar mass",
     )
-    result.add_option(
-        "-Q", dest="Qvir", type="float", default=0.5, help="total mass [%default]"
-    )
-    result.add_option(
+    parser.add_argument("-Q", "--Qvir", type=float, default=0.5, help="total mass")
+    parser.add_argument(
         "--radius",
-        unit=units.parsec,
-        dest="radius",
-        type="float",
+        type=units.parsec,
         default=1.0 | units.parsec,
-        help="cluster radius [%default]",
+        help="cluster radius",
     )
-    result.add_option(
-        "--name", dest="name", default="star", help="stellar name [%default]"
-    )
-    result.add_option(
+    parser.add_argument("--name", default="star", help="stellar name")
+    parser.add_argument(
         "--seed",
-        dest="seed",
-        type="int",
+        type=int,
         default=-1,
-        help="random number seed [%default]",
+        help="random number seed",
     )
-    return result
+    return parser
 
 
-if __name__ in ("__main__", "__plot__"):
-    o, arguments = new_option_parser().parse_args()
-    if o.seed > 0:
-        numpy.random.seed(o.seed)
+def main():
+    args = new_argument_parser().parse_args()
+    if args.seed > 0:
+        np.random.seed(args.seed)
     else:
         print("random number seed from clock.")
 
-    if o.mmin > 0 | units.MSun:
-        masses = new_salpeter_mass_distribution(o.nstars, o.mmin, o.mmax)
+    if args.mmin > 0 | units.MSun:
+        masses = new_salpeter_mass_distribution(args.nstars, args.mmin, args.mmax)
     else:
-        masses = numpy.array(o.nstars) | units.MSun
-        masses += o.mass
-    converter = nbody_system.nbody_to_si(masses.sum(), o.radius)
-    bodies = make_plummer_sphere(o.nstars, masses, o.name, converter)
-    bodies.scale_to_standard(convert_nbody=converter, virial_ratio=o.Qvir)
-    index = 0
+        masses = np.array(args.nstars) | units.MSun
+        masses += args.mass
+    converter = nbody_system.nbody_to_si(masses.sum(), args.radius)
+    bodies = make_plummer_sphere(args.nstars, masses, args.name, converter)
+    bodies.scale_to_standard(convert_nbody=converter, virial_ratio=args.Qvir)
     time = 0 | units.Myr
-    if o.outfile == None:
-        filename = "plummer.amuse".format(index)
+    if args.outfile is None:
+        filename = "plummer.amuse"
     else:
-        filename = o.outfile
+        filename = args.outfile
     write_set_to_file(
         bodies, filename, "amuse", timestamp=time, append_to_file=False, version="2.0"
     )
+
+
+if __name__ == "__main__":
+    main()
