@@ -5,7 +5,7 @@ import numpy as np
 from amuse.units import units, nbody_system
 from amuse.ic.plummer import new_plummer_model
 from amuse.ic.salpeter import new_salpeter_mass_distribution
-from amuse.io import write_set_to_file, read_set_from_file
+from amuse.io import write_set_to_file
 
 
 def make_plummer_sphere(nstars, masses, name, converter):
