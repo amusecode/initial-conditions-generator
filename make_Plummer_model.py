@@ -1,7 +1,9 @@
-from amuse.lab import *
-import sys
+import argparse
 import numpy
-import csv
+
+from amuse.units import units, nbody_system
+from amuse.ic import new_salpeter_mass_distribution, new_plummer_model
+from amuse.io import write_set_to_file
 
 
 def ZAMS_radius(mass):
@@ -19,64 +21,64 @@ def ZAMS_radius(mass):
     return r_zams | units.RSun
 
 
-def new_option_parser():
-    from amuse.units.optparse import OptionParser
-
-    result = OptionParser()
-    result.add_option(
-        "-f", dest="filename", default=None, help="input filename [%default]"
+def new_argument_parser():
+    result = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    result.add_option(
-        "-F", dest="outfile", default="star.amuse", help="output filename [%default]"
+    result.add_argument("-f", "--filename", default=None, help="input filename")
+    result.add_argument(
+        "-F", "--outfile", default="Plummer.amuse", help="output filename"
     )
-    result.add_option(
-        "-N", dest="n_star", type="int", default=10, help="number of stars [%default]"
+    result.add_argument(
+        "-N", dest="--number_of_stars", type=int, default=10, help="number of stars"
     )
-    result.add_option(
+    result.add_argument(
         "-m",
-        unit=units.MSun,
-        dest="m_min",
-        type="float",
+        "--mass_min",
+        type=units.MSun,
         default=0.1 | units.MSun,
-        help="number of stars [%default]",
+        help="number of stars",
     )
-    result.add_option(
+    result.add_argument(
         "-R",
-        unit=units.parsec,
-        dest="r_vir",
-        type="float",
+        "--radius_virial",
+        type=units.parsec,
         default=1.0 | units.parsec,
-        help="cluster Plummer radius [%default]",
+        help="cluster Plummer radius",
     )
-    result.add_option(
+    result.add_argument(
         "--seed",
-        dest="seed",
-        type="int",
+        type=int,
         default=-1,
-        help="random number seed [%default]",
+        help="random number seed",
     )
     return result
 
 
-if __name__ in ("__main__", "__plot__"):
-    o, arguments = new_option_parser().parse_args()
-    if o.seed > 0:
-        numpy.random.seed(o.seed)
+def main():
+    args = new_argument_parser().parse_args()
+    if args.seed > 0:
+        numpy.random.seed(args.seed)
     else:
         print("random number seed from clock.")
 
-    mass = new_salpeter_mass_distribution(o.n_star, mass_min=o.m_min)
-    converter = nbody_system.nbody_to_si(mass.sum(), o.r_vir)
+    mass = new_salpeter_mass_distribution(args.number_of_stars, mass_min=args.mass_min)
+    converter = nbody_system.nbody_to_si(mass.sum(), args.radius_virial)
     stars = new_plummer_model(len(mass), convert_nbody=converter)
     stars.type = "star"
     stars.name = "star"
     stars.radius = ZAMS_radius(stars.mass)
 
     time = 0 | units.Myr
-    if o.outfile == None:
-        filename = "Plummer.amuse".format(index)
-    else:
-        filename = o.outfile
     write_set_to_file(
-        stars, filename, "amuse", timestamp=time, append_to_file=False, version="2.0"
+        stars,
+        args.outfile,
+        "amuse",
+        timestamp=time,
+        append_to_file=False,
+        version="2.0",
     )
+
+
+if __name__ == "__main__":
+    main()
