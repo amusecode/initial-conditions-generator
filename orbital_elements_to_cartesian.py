@@ -1,10 +1,15 @@
-from amuse.lab import *
-from math import pi, sin, cos, sqrt, atan2
-import numpy
+import argparse
+from math import sqrt
+
+import numpy as np
+
+from amuse.units import units, constants, nbody_system
+from amuse.units.trigo import pi, sin, cos, atan2
+from amuse.community.kepler import Kepler
 
 
 def orbital_period(a, Mtot):
-    return 2 * numpy.pi * (a**3 / (constants.G * Mtot)).sqrt()
+    return 2 * np.pi * (a**3 / (constants.G * Mtot)).sqrt()
 
 
 def get_component_binary_elements(comp1, comp2, kepler, conv):
@@ -22,9 +27,9 @@ def get_component_binary_elements(comp1, comp2, kepler, conv):
 def calculate_orbital_elements(primary, secondary, kepler, converter):
     m, a, e, r, E = get_component_binary_elements(primary, secondary, kepler, converter)
     m = converter.to_si(m).as_quantity_in(units.MSun)
-    a = converter.to_si(a).as_quantity_in(units.AU)
-    r = converter.to_si(r).as_quantity_in(units.AU)
-    E = converter.to_si(r).as_quantity_in(units.AU)
+    a = converter.to_si(a).as_quantity_in(units.au)
+    r = converter.to_si(r).as_quantity_in(units.au)
+    E = converter.to_si(r).as_quantity_in(units.au)
 
     m0 = primary.mass
     m1 = secondary.mass
@@ -32,13 +37,11 @@ def calculate_orbital_elements(primary, secondary, kepler, converter):
 
 
 def orbital_parameters_for_the_planets(bodies, verbose=True):
-    from amuse.community.kepler.interface import Kepler
-
     kepler = Kepler(redirection="none")
     kepler.initialize_code()
-    #    kep_converter=nbody_system.nbody_to_si(1|units.MSun, 10|units.AU)
-    converter = nbody_system.nbody_to_si(1.0 | units.MSun, 1 | units.AU)
-    a = [] | units.AU
+    #    kep_converter=nbody_system.nbody_to_si(1|units.MSun, 10|units.au)
+    converter = nbody_system.nbody_to_si(1.0 | units.MSun, 1 | units.au)
+    a = [] | units.au
     e = []
     m = [] | units.MSun
     name = []
@@ -96,7 +99,7 @@ def orbital_elements_to_pos_and_vel(
     ta = 2.0 * atan2(sqrt(1.0 + ecc) * sin(EA / 2.0), sqrt(1.0 - ecc) * cos(EA / 2.0))
     radius = a * (1.0 - ecc * cos(EA))  # radius from EA and ecc
 
-    r = [] | units.AU  # Cartesian position
+    r = [] | units.au  # Cartesian position
     r.append(
         radius * (cos(omra) * cos(omega + ta) - sin(omra) * sin(omega + ta) * cos(inc))
     )
@@ -128,36 +131,34 @@ def orbital_elements_to_pos_and_vel(
     return r, v
 
 
-def main(T, a, e, i, o, O, t, P, M, m):
-    T = T | units.yr
-    a = a | units.AU
-    t = t | units.yr
-    M = M | units.MSun
-    m = m | units.MSun
-    i *= pi / 180.0
-    o *= pi / 180.0
-    O *= pi / 180.0
+def orbital_elements_to_cartesian(T, a, e, i, o, O, t, P, M, m):
     r, v = orbital_elements_to_pos_and_vel(T, a, e, i, o, O, t, M, m)
-    print("r=", r.in_(units.AU), "v=", v.in_(units.kms))
+    print(f"r={r.in_(units.au)} v={v.in_(units.kms)}")
 
 
-def new_option_parser():
-    from optparse import OptionParser
-
-    result = OptionParser()
+def new_argument_parser():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
     # data for S2 from 2009ApJ...692.1075G
-    result.add_option("-T", dest="T", type="float", default=0)
-    result.add_option("-a", dest="a", type="float", default=1042.5)
-    result.add_option("-e", dest="e", type="float", default=0.88)
-    result.add_option("-i", dest="i", type="float", default=135.25)
-    result.add_option("-o", dest="o", type="float", default=225.39)
-    result.add_option("-O", dest="O", type="float", default=63.56)
-    result.add_option("-t", dest="t", type="float", default=2002.32)
-    result.add_option("-M", dest="M", type="float", default=4.45e6)
-    result.add_option("-m", dest="m", type="float", default=19.5)
-    return result
+    parser.add_argument("-T", type=units.yr, default=0 | units.yr)
+    parser.add_argument("-a", type=units.au, default=1042.5 | units.au)
+    parser.add_argument("-e", type=float, default=0.88)
+    parser.add_argument("-i", type=units.deg, default=135.25 | units.deg)
+    parser.add_argument("-o", type=units.deg, default=225.39 | units.deg)
+    parser.add_argument("-O", type=units.deg, default=63.56 | units.deg)
+    parser.add_argument("-t", type=units.yr, default=2002.32 | units.yr)
+    parser.add_argument("-M", type=units.MSun, default=4.45e6 | units.MSun)
+    parser.add_argument("-m", type=units.MSun, default=19.5 | units.MSun)
+    return parser
+
+
+def main():
+    args = new_argument_parser().parse_args()
+    orbital_elements_to_cartesian(
+        args.T, args.a, args.e, args.i, args.o, args.O, args.t, args.M, args.m
+    )
 
 
 if __name__ == "__main__":
-    options, arguments = new_option_parser().parse_args()
-    main(**options.__dict__)
+    main()

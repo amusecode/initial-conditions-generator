@@ -1,7 +1,17 @@
-import numpy
-from amuse.lab import *
+import argparse
+
+import xml.etree.ElementTree as ET
+import urllib.request
+import gzip
+import io
+
+import numpy as np
+
+from amuse.units import units, constants
+from amuse.datamodel import Particles
+from amuse.ic.salpeter import new_salpeter_mass_distribution
 from amuse.ext.orbital_elements import new_binary_from_orbital_elements
-import xml.etree.ElementTree as ET, urllib.request, gzip, io
+from amuse.io import write_set_to_file
 
 
 def read_planetary_system_from_database(name):
@@ -98,17 +108,17 @@ def fill_in_missing_planets(mass, sma, ecc, inc):
             dm -= mass[-1]
             sma.append(
                 10
-                ** numpy.random.uniform(
-                    numpy.log10(amax.value_in(units.au)),
-                    numpy.log10(1.05 * a_extreme.value_in(units.au)),
+                ** np.random.uniform(
+                    np.log10(amax.value_in(units.au)),
+                    np.log10(1.05 * a_extreme.value_in(units.au)),
                     size=1,
                 )
                 | units.au
             )
             print("a=", sma.in_(units.au), amin.in_(units.au), amax.in_(units.au))
 
-            ecc.append(numpy.random.uniform(emin, emax, size=1) ** 2)
-            inc.append(numpy.random.uniform(imin, imax, size=1))
+            ecc.append(np.random.uniform(emin, emax, size=1) ** 2)
+            inc.append(np.random.uniform(imin, imax, size=1))
             amax = max(sma)
             print("amax=", amax.value_in(units.au), dm.in_(units.MEarth))
             if amax >= a_extreme:
@@ -136,8 +146,8 @@ def make_consistent_planetary_system(mass, sma, ecc, inc):
     imax = max(inc)
     if imax < 0:
         imax = 1.0  # deg.
-    # imax = numpy.deg2rad(imax)
-    # inc = numpy.deg2rad(inc)
+    # imax = np.deg2rad(imax)
+    # inc = np.deg2rad(inc)
     print("extremes:", mmin, mmax, amin, amax, emin, emax, imin, imax)
 
     for i in range(len(mass)):
@@ -149,17 +159,17 @@ def make_consistent_planetary_system(mass, sma, ecc, inc):
             print("a=", amin.value_in(units.au), amax.value_in(units.au))
             sma[i] = (
                 10
-                ** numpy.random.uniform(
-                    numpy.log10(amin.value_in(units.au)),
-                    numpy.log10(amax.value_in(units.au)),
+                ** np.random.uniform(
+                    np.log10(amin.value_in(units.au)),
+                    np.log10(amax.value_in(units.au)),
                     size=1,
                 )
                 | units.au
             )
         if ecc[i] < 0:
-            ecc[i] = numpy.random.uniform(emin, emax) ** 2
+            ecc[i] = np.random.uniform(emin, emax) ** 2
         if inc[i] < 0:
-            inc[i] = numpy.random.uniform(imin, imax)
+            inc[i] = np.random.uniform(imin, imax)
 
     return mass, sma, ecc, inc
 
@@ -170,7 +180,7 @@ def add_planet(star, np_obs, mass, sma, ecc, inc):
     # converter = nbody_system.nbody_to_si(star.mass, max(sma))
     planets = Particles()
     for i in range(len(mass)):
-        ang_1, ang_2, ang_3 = numpy.random.uniform(0, 2 * numpy.pi, 3)
+        ang_1, ang_2, ang_3 = np.random.uniform(0, 2 * np.pi, 3)
         print(i, star[0].mass, mass[i], sma[i], ecc[i], inc[i])
         print(star[0].mass)
         print("<<=", type(mass[i].number))
@@ -228,43 +238,44 @@ def make_planetary_system(name, add_missing=False):
     return star
 
 
-def new_option_parser():
-    from amuse.units.optparse import OptionParser
-
-    result = OptionParser()
-    result.add_option("--name", dest="name", default="", help="system name [%default]")
-    result.add_option(
+def new_argument_parser():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument("--name", default="", help="system name")
+    parser.add_argument(
         "-F",
         "--filename",
-        dest="filename",
         default="planetary_system.amuse",
-        help="output filename [%default]",
+        help="output filename",
     )
-    result.add_option(
+    parser.add_argument(
         "--nmin",
-        dest="nmin",
-        type="int",
+        type=int,
         default="1",
-        help="minimum number of planets [%default]",
+        help="minimum number of planets",
     )
-    result.add_option(
+    parser.add_argument(
         "--add_missing",
-        dest="add_missing",
         default=False,
         action="store_true",
-        help="add potentially missing planets [%default]",
+        help="add potentially missing planets",
     )
-    return result
+    return parser
 
 
-if __name__ in ("__main__", "__plot__"):
-    o, arguments = new_option_parser().parse_args()
+def main():
+    args = new_argument_parser().parse_args()
 
-    if len(o.name) == 0:
-        names, np = read_names(o.nmin)
+    if len(args.name) == 0:
+        names, np = read_names(args.nmin)
         for name, number in zip(names, np):
-            print("star:", name, "has: ", number, "planets.")
+            print(f"star: {name} has: {number} planets.")
     else:
-        system = make_planetary_system(o.name, o.add_missing)
+        system = make_planetary_system(args.name, args.add_missing)
         print(system)
-        write_set_to_file(system, o.filename, "amuse")
+        write_set_to_file(system, args.filename, "amuse")
+
+
+if __name__ == "__main__":
+    main()

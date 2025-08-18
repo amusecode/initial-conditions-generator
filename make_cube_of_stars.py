@@ -1,23 +1,27 @@
-from amuse.lab import *
-import sys
-import numpy
+import argparse
+
+import numpy as np
+
+from amuse.units import units, nbody_system
+from amuse.datamodel import Particles
+from amuse.io import write_set_to_file
+from amuse.ic.salpeter import new_salpeter_mass_distribution
 
 
 def make_cube_of_stars(masses, names, converter):
-
     N = len(masses)
     stars = Particles(N, mass=masses)
     # L = converter.to_si(1|nbody_system.length)
     # dv = converter.to_si(40|nbody_system.speed)
     L = 500 | units.au
     dv = 2.5 | units.kms
-    numpy.random.seed(7654304)
+    np.random.seed(7654304)
 
-    stars.x = L * numpy.random.uniform(-1.0, 1.0, N)
-    stars.y = L * numpy.random.uniform(-1.0, 1.0, N)
+    stars.x = L * np.random.uniform(-1.0, 1.0, N)
+    stars.y = L * np.random.uniform(-1.0, 1.0, N)
     stars.z = L * 0.0
-    stars.vx = dv * numpy.random.uniform(-1.0, 1.0, N)
-    stars.vy = dv * numpy.random.uniform(-1.0, 1.0, N)
+    stars.vx = dv * np.random.uniform(-1.0, 1.0, N)
+    stars.vy = dv * np.random.uniform(-1.0, 1.0, N)
     stars.vz = dv * 0.0
 
     stars.radius = (1.0 | units.RSun) * (stars.mass / (1.0 | units.MSun)) ** (1.0 / 3.0)
@@ -29,96 +33,89 @@ def make_cube_of_stars(masses, names, converter):
     return stars
 
 
-def new_option_parser():
-    from amuse.units.optparse import OptionParser
-
-    result = OptionParser()
-    result.add_option(
-        "-f", dest="filename", default=None, help="input filename [%default]"
+def new_argument_parser():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    result.add_option(
-        "-F", dest="outfile", default=None, help="output filename [%default]"
+    parser.add_argument(
+        "-f", "--filename", default=None, help="input filename"
     )
-    result.add_option(
+    parser.add_argument(
+        "-F", "--outfile", default=None, help="output filename"
+    )
+    parser.add_argument(
         "--nstars",
-        dest="nstars",
-        type="int",
+        type=int,
         default=10,
-        help="number of stars [%default]",
+        help="number of stars",
     )
-    result.add_option(
+    parser.add_argument(
         "--mass",
-        unit=units.MSun,
-        dest="mass",
-        type="float",
+        type=units.MSun,
         default=1 | units.MSun,
-        help="total cluster mass [%default]",
+        help="total cluster mass",
     )
-    result.add_option(
+    parser.add_argument(
         "--mmin",
-        unit=units.MSun,
-        dest="mmin",
-        type="float",
+        type=units.MSun,
         default=-0.1 | units.MSun,
-        help="minimum stellar mass [%default]",
+        help="minimum stellar mass",
     )
-    result.add_option(
+    parser.add_argument(
         "--mmax",
-        unit=units.MSun,
-        dest="mmax",
-        type="float",
+        type=units.MSun,
         default=100 | units.MSun,
-        help="maximum stellar mass [%default]",
+        help="maximum stellar mass",
     )
-    result.add_option(
-        "-Q", dest="Qvir", type="float", default=0.5, help="total mass [%default]"
+    parser.add_argument(
+        "-Q", "--Qvir", type="float", default=0.5, help="virial ratio"
     )
-    result.add_option(
+    parser.add_argument(
         "--radius",
-        unit=units.parsec,
-        dest="radius",
-        type="float",
+        type=units.parsec,
         default=1.0 | units.parsec,
-        help="cluster radius [%default]",
+        help="cluster radius",
     )
-    result.add_option(
-        "--name", dest="name", default="star", help="stellar name [%default]"
+    parser.add_argument(
+        "--name", default="star", help="stellar name"
     )
-    result.add_option(
+    parser.add_argument(
         "--seed",
-        dest="seed",
-        type="int",
+        type=int,
         default=-1,
-        help="random number seed [%default]",
+        help="random number seed",
     )
-    return result
+    return parser
 
 
-if __name__ in ("__main__", "__plot__"):
-    o, arguments = new_option_parser().parse_args()
-    if o.seed > 0:
-        numpy.random.seed(o.seed)
+def main():
+    args = new_argument_parser().parse_args()
+    if args.seed > 0:
+        np.random.seed(args.seed)
     else:
         print("random number seed from clock.")
-    # numpy.random.seed(7654304)
+    # np.random.seed(7654304)
 
-    if o.mmin > 0 | units.MSun:
-        masses = new_salpeter_mass_distribution(o.nstars, o.mmin, o.mmax)
+    if args.mmin > 0 | units.MSun:
+        masses = new_salpeter_mass_distribution(args.nstars, args.mmin, args.mmax)
     else:
-        masses = numpy.zeros(o.nstars) | units.MSun
-        masses += o.mass
+        masses = np.zeros(args.nstars) | units.MSun
+        masses += args.mass
 
-    converter = nbody_system.nbody_to_si(masses.sum(), o.radius)
-    bodies = make_cube_of_stars(masses, o.name, converter)
+    converter = nbody_system.nbody_to_si(masses.sum(), args.radius)
+    bodies = make_cube_of_stars(masses, args.name, converter)
     print(bodies)
 
-    # bodies.scale_to_standard(convert_nbody=converter, virial_ratio=o.Qvir)
-    index = 0
+    # bodies.scale_to_standard(convert_nbody=converter, virial_ratio=args.Qvir)
     time = 0 | units.Myr
-    if o.outfile == None:
-        filename = "cube.amuse".format(index)
+    if args.outfile is None:
+        filename = "cube.amuse"
     else:
-        filename = o.outfile
+        filename = args.outfile
     write_set_to_file(
         bodies, filename, "amuse", timestamp=time, append_to_file=False, version="2.0"
     )
+
+
+if __name__ == "__main__":
+    main()

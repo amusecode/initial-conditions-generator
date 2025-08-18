@@ -1,10 +1,12 @@
-from amuse.lab import *
-import sys
-import numpy
+import argparse
 
-from amuse.lab import new_kroupa_mass_distribution
-from amuse.lab import new_plummer_sphere
-from amuse.community.fractalcluster.interface import new_fractal_cluster_model
+import numpy as np
+
+from amuse.units import units, nbody_system
+from amuse.ic.kroupa import new_kroupa_mass_distribution
+from amuse.ic.plummer import new_plummer_sphere
+from amuse.io import write_set_to_file
+from amuse.ic.fractalcluster import new_fractal_cluster_model
 
 
 def make_fractal_sphere(nstars, masses, name, Fd, converter):
@@ -17,113 +19,92 @@ def make_fractal_sphere(nstars, masses, name, Fd, converter):
     return stars
 
 
-def new_option_parser():
-    from amuse.units.optparse import OptionParser
-
-    result = OptionParser()
-    result.add_option(
-        "-f", dest="filename", default=None, help="input filename [%default]"
+def new_argument_parser():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    result.add_option(
-        "-F", dest="outfile", default=None, help="output filename [%default]"
-    )
-    result.add_option(
+    parser.add_argument("-f", "--filename", default=None, help="input filename")
+    parser.add_argument("-F", "--outfile", default=None, help="output filename")
+    parser.add_argument(
         "--nstars",
-        dest="nstars",
-        type="int",
+        type=int,
         default=100,
-        help="number of stars [%default]",
+        help="number of stars",
     )
-    result.add_option(
+    parser.add_argument(
         "--mass",
-        unit=units.MSun,
-        dest="mass",
-        type="float",
+        type=units.MSun,
         default=1 | units.MSun,
-        help="total cluster mass [%default]",
+        help="total cluster mass",
     )
-    result.add_option(
+    parser.add_argument(
         "--mmin",
-        unit=units.MSun,
-        dest="mmin",
-        type="float",
+        type=units.MSun,
         default=0.08 | units.MSun,
-        help="minimum stellar mass [%default]",
+        help="minimum stellar mass",
     )
-    result.add_option(
+    parser.add_argument(
         "--mmax",
-        unit=units.MSun,
-        dest="mmax",
-        type="float",
+        type=units.MSun,
         default=100 | units.MSun,
-        help="maximum stellar mass [%default]",
+        help="maximum stellar mass",
     )
-    result.add_option(
-        "-Q", dest="Qvir", type="float", default=0.5, help="total mass [%default]"
-    )
-    result.add_option(
+    parser.add_argument("-Q", "--Qvir", type=float, default=0.5, help="virial ratio")
+    parser.add_argument(
         "--Fd",
-        dest="Fd",
-        type="float",
+        type=float,
         default=1.6,
-        help="Fractal dimension [%default]",
+        help="Fractal dimension",
     )
-    result.add_option(
+    parser.add_argument(
         "--radius",
-        unit=units.parsec,
-        dest="radius",
-        type="float",
+        type=units.parsec,
         default=1.0 | units.parsec,
-        help="cluster radius [%default]",
+        help="cluster radius",
     )
-    result.add_option(
+    parser.add_argument(
         "--nsuns",
-        dest="nsun_like_stars",
-        type="int",
+        "--nsun_like_stars",
+        type=int,
         default=-1,
-        help="number of Sun-like stars [%default]",
+        help="number of Sun-like stars",
     )
-    result.add_option(
-        "--name", dest="name", default="star", help="stellar name [%default]"
-    )
-    result.add_option(
+    parser.add_argument("--name", default="star", help="stellar name")
+    parser.add_argument(
         "--seed",
-        dest="seed",
-        type="int",
+        type=int,
         default=-1,
-        help="random number seed [%default]",
+        help="random number seed",
     )
-    return result
+    return parser
 
 
-if __name__ in ("__main__", "__plot__"):
-    o, arguments = new_option_parser().parse_args()
-    if o.seed > 0:
-        numpy.random.seed(o.seed)
+def main():
+    args = new_argument_parser().parse_args()
+    if args.seed > 0:
+        np.random.seed(args.seed)
     else:
         print("random number seed from clock.")
 
-    if o.mmin > 0 | units.MSun:
-        masses = new_kroupa_mass_distribution(o.nstars, o.mmin, o.mmax)
+    if args.mmin > 0 | units.MSun:
+        masses = new_kroupa_mass_distribution(args.nstars, args.mmin, args.mmax)
     else:
-        masses = numpy.array(o.nstars) | units.MSun
-        masses += o.mass
+        masses = np.array(args.nstars) | units.MSun
+        masses += args.mass
 
-    converter = nbody_system.nbody_to_si(masses.sum(), o.radius)
-    bodies = make_fractal_sphere(o.nstars, masses, o.name, o.Fd, converter)
+    converter = nbody_system.nbody_to_si(masses.sum(), args.radius)
+    bodies = make_fractal_sphere(args.nstars, masses, args.name, args.Fd, converter)
 
-    if o.nsun_like_stars > 0:
+    if args.nsun_like_stars > 0:
         bodies = bodies.sorted_by_attributes("mass")[::-1]
         print(bodies.mass.in_(units.MSun))
-        imlo = 0
-        imlo = 0
         for bi in range(len(bodies)):
             if bodies[bi].mass < 1 | units.MSun:
                 im = bi
                 break
         bi = 1
         suns = bodies[im - bi : im + bi]
-        while len(suns) < o.nsun_like_stars:
+        while len(suns) < args.nsun_like_stars:
             bi += 1
             suns = bodies[im - bi : im + bi]
 
@@ -132,13 +113,16 @@ if __name__ in ("__main__", "__plot__"):
         suns.name = "Sun"
 
     bodies.move_to_center()
-    bodies.scale_to_standard(convert_nbody=converter, virial_ratio=o.Qvir)
-    index = 0
+    bodies.scale_to_standard(convert_nbody=converter, virial_ratio=args.Qvir)
     time = 0 | units.Myr
-    if o.outfile == None:
-        filename = "fractal.amuse".format(index)
+    if args.outfile is None:
+        filename = "fractal.amuse"
     else:
-        filename = o.outfile
+        filename = args.outfile
     write_set_to_file(
         bodies, filename, "amuse", timestamp=time, append_to_file=False, version="2.0"
     )
+
+
+if __name__ == "__main__":
+    main()

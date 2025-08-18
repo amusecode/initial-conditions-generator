@@ -1,21 +1,24 @@
-from amuse.lab import *
-import sys
-import numpy
+import argparse
+
+import numpy as np
+
+from amuse.units import units, constants, nbody_system
+from amuse.datamodel import Particles
+from amuse.io import write_set_to_file, read_set_from_file
 from amuse.ext.orbital_elements import new_binary_from_orbital_elements
+from amuse.ext.orbital_elements import orbital_elements_from_binary
 from amuse.ext.protodisk import ProtoPlanetaryDisk
+
 from move_bodies_to_stellar_position import move_bodies_to_stellar_position
 
 
 def test_distribution(bodies):
-    from determine_orbital_elements import calculate_orbital_elements_for_single_planet
-
     asteroids = bodies[bodies.type == b"debris"]
     star = bodies[bodies.type == b"star"]
     print(star)
     print(asteroids)
     p = Particles()
     p.add_particle(star)
-    from amuse.ext.orbital_elements import orbital_elements_from_binary
 
     sma = [] | units.au
     ecc = []
@@ -28,27 +31,24 @@ def test_distribution(bodies):
         ecc.append(e)
         p.remove_particle(ai)
 
-    """
-    from matplotlib import pyplot
-    pyplot.scatter(sma.value_in(units.au), ecc)
-    pyplot.semilogx()
-    pyplot.show()
-    """
+    # import matplotlib.pyplot as plt
+    # plt.scatter(sma.value_in(units.au), ecc)
+    # plt.semilogx()
+    # plt.show()
 
 
 def add_scattered_asteroids(star, Ndisk_per_MSun, mdisk, qmin, qmax, emin, emax):
-
     Ndisk = int(Ndisk_per_MSun * star.mass.value_in(units.MSun))
-    print("Run with Ndisk = ", Ndisk)
-    converter = nbody_system.nbody_to_si(star.mass, qmin)
-    e = emin + (emax - emin) * numpy.random.random(Ndisk)
-    lqmin = numpy.log10(qmin.value_in(units.au))
-    lqmax = numpy.log10(qmax.value_in(units.au))
-    q = 10 ** numpy.random.uniform(lqmin, lqmax, Ndisk) | units.au
+    print(f"Run with Ndisk = {Ndisk}")
+    # converter = nbody_system.nbody_to_si(star.mass, qmin)
+    e = emin + (emax - emin) * np.random.random(Ndisk)
+    lqmin = np.log10(qmin.value_in(units.au))
+    lqmax = np.log10(qmax.value_in(units.au))
+    q = 10 ** np.random.uniform(lqmin, lqmax, Ndisk) | units.au
     a = q / (1 - e)
     asteroids = Particles(0)
     for i in range(Ndisk):
-        ang_1, ang_2, ang_3 = numpy.random.uniform(0, 2 * numpy.pi, 3)
+        ang_1, ang_2, ang_3 = np.random.uniform(0, 2 * np.pi, 3)
         b = new_binary_from_orbital_elements(
             mass1=star.mass,
             mass2=mdisk,
@@ -74,69 +74,55 @@ def add_scattered_asteroids(star, Ndisk_per_MSun, mdisk, qmin, qmax, emin, emax)
     return asteroids
 
 
-def new_option_parser():
-    from amuse.units.optparse import OptionParser
-
-    result = OptionParser()
-    result.add_option(
-        "-f", dest="filename", default=None, help="input filename [%default]"
+def new_argument_parser():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    result.add_option(
-        "-F", dest="outfile", default=None, help="output filename [%default]"
-    )
-    result.add_option(
+    parser.add_argument("-f", "--filename", default=None, help="input filename")
+    parser.add_argument("-F", "--outfile", default=None, help="output filename")
+    parser.add_argument(
         "--mdisk",
-        unit=units.kg,
-        dest="mdisk",
-        type="float",
+        type=units.kg,
         default=0.0 | units.kg,
-        help="mass of individual disk particles [%default]",
+        help="mass of individual disk particles",
     )
-    result.add_option(
+    parser.add_argument(
         "--Ndisk",
-        dest="Ndisk",
-        type="int",
+        type=int,
         default=100,
-        help="number of disk particles [%default]",
+        help="number of disk particles",
     )
-    result.add_option(
+    parser.add_argument(
         "--qmin",
-        unit=units.au,
-        dest="qmin",
-        type="float",
+        type=units.au,
         default=-5.2044 | units.au,
-        help="minimal closest appraoch [%default]",
+        help="minimal closest appraoch",
     )
-    result.add_option(
+    parser.add_argument(
         "--qmax",
-        unit=units.au,
-        dest="qmax",
-        type="float",
+        type=units.au,
         default=-30.33 | units.au,
-        help="maximal closest appraoch [%default]",
+        help="maximal closest appraoch",
     )
-    result.add_option(
+    parser.add_argument(
         "--emin",
-        dest="emin",
-        type="float",
+        type=float,
         default=0.10,
-        help="minimum eccentricity [%default]",
+        help="minimum eccentricity",
     )
-    result.add_option(
+    parser.add_argument(
         "--emax",
-        dest="emax",
-        type="float",
+        type=float,
         default=0.90,
-        help="maximum eccentricity [%default]",
+        help="maximum eccentricity",
     )
-    result.add_option(
+    parser.add_argument(
         "--seed",
-        dest="seed",
-        type="int",
+        type=int,
         default=-1,
-        help="random number seed [%default]",
+        help="random number seed",
     )
-    return result
+    return parser
 
 
 def get_inner_planet(planets):
@@ -151,51 +137,54 @@ def get_outer_planet(planets):
     return outer_planet[0]
 
 
-if __name__ in ("__main__", "__plot__"):
-    o, arguments = new_option_parser().parse_args()
+def main():
+    args = new_argument_parser().parse_args()
 
-    if o.seed > 0:
-        numpy.random.seed(o.seed)
+    if args.seed > 0:
+        np.random.seed(args.seed)
     else:
         print("random number seed from clock.")
 
-    bodies = read_set_from_file(o.filename, "hdf5", close_file=True)
+    bodies = read_set_from_file(args.filename, close_file=True)
     print(bodies)
-    stars = bodies[bodies.type == b"star"]
-    planets = bodies[bodies.type == b"planet"]
-    if o.qmin < 0 | units.au:
+    stars = bodies[bodies.type == "star"]
+    planets = bodies[bodies.type == "planet"]
+    if args.qmin < 0 | units.au:
         inner_planet = get_inner_planet(planets)
         qmin = 0.5 * inner_planet.semimajor_axis * (1.0 - inner_planet.eccentricity)
     else:
-        qmin = o.qmin
-    if o.qmax < 0 | units.au:
+        qmin = args.qmin
+    if args.qmax < 0 | units.au:
         outer_planet = get_outer_planet(planets)
         qmax = 2 * outer_planet.semimajor_axis * (1.0 - outer_planet.eccentricity)
     else:
-        qmax = o.qmax
+        qmax = args.qmax
     if len(stars) == 0:
-        stars = bodies[bodies.name == b"star"]
+        stars = bodies[bodies.name == "star"]
 
     debris = add_scattered_asteroids(
-        stars[0], o.Ndisk, o.mdisk, qmin, qmax, o.emin, o.emax
+        stars[0], args.Ndisk, args.mdisk, qmin, qmax, args.emin, args.emax
     )
     bodies.add_particles(debris)
     # bodies.move_to_center()
     move_bodies_to_stellar_position(bodies)
 
-    """
-    test_distribution(bodies)
-    from matplotlib import pyplot
-    pyplot.scatter(bodies.x.value_in(units.parsec),
-                   bodies.y.value_in(units.parsec))
-    pyplot.show()
-    """
+    # test_distribution(bodies)
+    # import matplotlib.pyplot as plt
+    # plt.scatter(
+    #     bodies.x.value_in(units.parsec),
+    #     bodies.y.value_in(units.parsec))
+    # plt.show()
 
     time = 0 | units.Myr
-    if o.outfile == None:
+    if args.outfile is None:
         filename = "added_scattered_asteroids.amuse"
     else:
-        filename = o.outfile
+        filename = args.outfile
     write_set_to_file(
         bodies, filename, "amuse", timestamp=time, append_to_file=False, version="2.0"
     )
+
+
+if __name__ == "__main__":
+    main()

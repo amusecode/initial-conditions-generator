@@ -1,33 +1,34 @@
-import os
-import sys
-import time
-import numpy
-from amuse.lab import *
+import argparse
 
+import numpy as np
+
+from amuse.units import units, constants, nbody_system
+from amuse.datamodel import Particles
+from amuse.ic import new_solar_system
 from amuse.ic.solar_system_moons import new_lunar_system
 from amuse.ic.solar_system_moons import new_lunar_system_in_time
+from amuse.io import write_set_to_file
+
 from amuse.ext.orbital_elements import new_binary_from_orbital_elements
-from amuse.plot import scatter
 from amuse.ext.protodisk import ProtoPlanetaryDisk
 from amuse.ext.solarsystem import solar_system_in_time
 
 
 def semimajor_axis(Mtot, P):
-    return ((constants.G * Mtot * (P**2) / (4 * numpy.pi**2))) ** (1.0 / 3.0)
+    return ((constants.G * Mtot * (P**2) / (4 * np.pi**2))) ** (1.0 / 3.0)
 
 
 def orbital_period(Mtot, a):
-    return (((4 * numpy.pi**2) * a**3) / (constants.G * Mtot)).sqrt()
+    return (((4 * np.pi**2) * a**3) / (constants.G * Mtot)).sqrt()
 
 
 def rescale_planetary_orbit(sun, planets, name, sma):
-
     planet = planets[planets.name == name]
     pos = planet.position
     vel = planet.velocity
-    ang_1, ang_2, ang_3 = numpy.random.uniform(0, 2 * numpy.pi, 3)
-    ecc = 0.01 * numpy.random.random()
-    inc = numpy.random.random()
+    ang_1, ang_2, ang_3 = np.random.uniform(0, 2 * np.pi, 3)
+    ecc = 0.01 * np.random.random()
+    inc = np.random.random()
     binary = new_binary_from_orbital_elements(
         sun.mass,
         planet.mass,
@@ -52,12 +53,12 @@ def rescale_planetary_orbit(sun, planets, name, sma):
     return planet
 
 
-names = ["Uranus", "Neptune", "Saturn", "Jupiter"]
 
 
 def get_nice_model_conditions():
+    names = ["Uranus", "Neptune", "Saturn", "Jupiter"]
 
-    converter = nbody_system.nbody_to_si(1 | units.MSun, 1 | units.AU)
+    converter = nbody_system.nbody_to_si(1 | units.MSun, 1 | units.au)
 
     time_0 = 2457099.5 | units.day
     time_JD = 2457099.5 | units.day
@@ -77,7 +78,7 @@ def get_nice_model_conditions():
     nice_system.add_particle(sun)
     nice_system.name = "Sun"
     nice_system.type = "star"
-    sma = 15 | units.AU
+    sma = 15 | units.au
     for name in names:
         planet = rescale_planetary_orbit(sun, solar_system, name, sma)
         nice_system.add_particles(planet)
@@ -89,7 +90,7 @@ def get_nice_model_conditions():
 
 
 def get_sun_jupiter_and_moons(Ndisk):
-    converter = nbody_system.nbody_to_si(1 | units.MSun, 1 | units.AU)
+    converter = nbody_system.nbody_to_si(1 | units.MSun, 1 | units.au)
     solar_system = new_solar_system()
     pebbels = Particles(0)
     ss = Particles(0)
@@ -99,34 +100,37 @@ def get_sun_jupiter_and_moons(Ndisk):
     return ss, pebbels, converter
 
 
-def new_option_parser():
-    from amuse.units.optparse import OptionParser
-
-    result = OptionParser()
-    result.add_option(
-        "-f", dest="filename", default=None, help="input filename [%default]"
+def new_argument_parser():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    result.add_option(
+    parser.add_argument(
+        "-f", "--filename", default=None, help="input filename"
+    )
+    parser.add_argument(
         "-F",
-        dest="outputfilename",
+        "--outputfilename",
         default="nice.amuse",
-        help="outpute filename [%default]",
+        help="outpute filename",
     )
-    return result
+    return parser
 
 
-if __name__ in ("__main__", "__plot__"):
-    o, r = new_option_parser().parse_args()
-
+def main():
+    args = new_argument_parser().parse_args()
     nice_model = get_nice_model_conditions()
     print(nice_model)
 
     time = 0 | units.Myr
     write_set_to_file(
         nice_model,
-        o.outputfilename,
+        args.outputfilename,
         "amuse",
         timestamp=time,
         append_to_file=False,
         version="2.0",
     )
+
+
+if __name__ == "__main__":
+    main()

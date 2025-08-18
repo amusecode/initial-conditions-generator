@@ -1,10 +1,14 @@
-from amuse.lab import *
+import argparse
+
+import matplotlib.pyplot as plt
+
+from amuse.units import constants, units
+from amuse.datamodel import Particles
+from amuse.io import write_set_to_file, read_set_from_file
 from amuse.ext.orbital_elements import orbital_elements_from_binary
 
 
 def calculate_orbital_elements_for_single_planet(star, planet):
-    from amuse.ext.orbital_elements import orbital_elements_from_binary
-
     p = Particles()
     p.add_particle(star)
     p.add_particle(planet)
@@ -31,33 +35,33 @@ def determine_orbital_elements(bodies):
         determine_orbits(star, planets)
 
 
-def new_option_parser():
-    from amuse.units.optparse import OptionParser
-
-    result = OptionParser()
-    result.add_option(
+def new_argument_parser():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument(
         "-f",
-        dest="filename",
+        "--filename",
         default="starplanetplets_i0000.amuse",
-        help="input filename [%default]",
+        help="input filename",
     )
-    result.add_option(
-        "-F", dest="outfile", default=None, help="output filename [%default]"
-    )
-    return result
+    parser.add_argument("-F", "--outfile", default=None, help="output filename")
+    return parser
 
 
-if __name__ in ("__main__", "__plot__"):
-    o, arguments = new_option_parser().parse_args()
-    bodies = read_set_from_file(o.filename, "hdf5", close_file=True)
+def main():
+    args = new_argument_parser().parse_args()
+    bodies = read_set_from_file(args.filename, close_file=True)
     print(bodies)
     determine_orbital_elements(bodies)
-    if o.outfile:
-        write_set_to_file(bodies, o.outfile, "hdf5", append_to_file=False)
-
-    from matplotlib import pyplot
+    if args.outfile:
+        write_set_to_file(bodies, args.outfile, append_to_file=False)
 
     q = bodies[1:].semimajor_axis.value_in(units.au) * (1 - bodies[1:].eccentricity)
     # pyplot.scatter(q, bodies[1:].eccentricity)
-    pyplot.scatter(bodies.x.value_in(units.au), bodies.y.value_in(units.au))
-    pyplot.show()
+    plt.scatter(bodies.x.value_in(units.au), bodies.y.value_in(units.au))
+    plt.show()
+
+
+if __name__ == "__main__":
+    main()

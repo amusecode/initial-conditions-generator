@@ -1,4 +1,6 @@
-from amuse.lab import *
+import argparse
+
+from amuse.io import read_set_from_file, write_set_to_file
 
 
 def move_bodies_to_stellar_position(bodies):
@@ -12,28 +14,32 @@ def move_bodies_to_stellar_position(bodies):
     # print "pos=", bodies.position.in_(units.parsec)
 
 
-def new_option_parser():
-    from amuse.units.optparse import OptionParser
-
-    result = OptionParser()
-    result.add_option(
-        "-f", dest="filename", default="star.amuse", help="input filename [%default]"
+def new_argument_parser():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    result.add_option(
-        "-F", dest="outfile", default=None, help="output filename [%default]"
+    parser.add_argument(
+        "-f", "--filename", default="star.amuse", help="input filename"
     )
-    return result
+    parser.add_argument(
+        "-F", "--outfile", default=None, help="output filename"
+    )
+    return parser
 
 
-if __name__ in ("__main__", "__plot__"):
-    o, arguments = new_option_parser().parse_args()
-    bodies = read_set_from_file(o.filename, "hdf5", close_file=True)
+def main():
+    args = new_argument_parser().parse_args()
+    bodies = read_set_from_file(args.filename, close_file=True)
 
     move_bodies_to_stellar_position(bodies)
     # print bodies.velocity
 
-    if o.outfile == None:
+    if args.outfile is None:
         filename = "moved_bodies.amuse"
     else:
-        filename = o.outfile
+        filename = args.outfile
     write_set_to_file(bodies, filename, "amuse", append_to_file=False, version="2.0")
+
+
+if __name__ == "__main__":
+    main()

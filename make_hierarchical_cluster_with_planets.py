@@ -1,13 +1,23 @@
-from amuse.lab import *
-import sys
-import numpy
+import argparse
 
+import numpy as np
+import matplotlib.pyplot as plt
+
+from amuse.units import units, nbody_system, constants
+from amuse.datamodel import Particles, Particle
+from amuse.ext.orbital_elements import new_binary_from_orbital_elements
+from amuse.ic.kroupa import new_kroupa_mass_distribution
+from amuse.io import write_set_to_file
+
+from add_asteroids_to_solar_system import True_anomaly_from_mean_anomaly
 from make_cluster_of_stars import make_fractal_cluster
-from matplotlib import pyplot
+from determine_orbital_elements import calculate_orbital_elements_for_single_planet
+from make_planets_oligarch import make_planets_oligarch
+from rotate import rotate_bodies_isotropically
 
 
 def ZAMS_radius(mass):
-    log_mass = numpy.log10(mass.value_in(units.MSun))
+    log_mass = np.log10(mass.value_in(units.MSun))
     mass_sq = (mass.value_in(units.MSun)) ** 2
     alpha = 0.08353 + 0.0565 * log_mass
     beta = 0.01291 + 0.2226 * log_mass
@@ -33,10 +43,8 @@ def make_secondary(
     Aop,
     ctype="star",
 ):
-    from amuse.ext.orbital_elements import new_binary_from_orbital_elements
-    from add_asteroids_to_solar_system import True_anomaly_from_mean_anomaly
 
-    Ta = True_anomaly_from_mean_anomaly(numpy.deg2rad(mean_anomaly), eccentricity)
+    Ta = True_anomaly_from_mean_anomaly(np.deg2rad(mean_anomaly), eccentricity)
     bs = new_binary_from_orbital_elements(
         parent.mass,
         mass,
@@ -61,11 +69,11 @@ def make_secondary(
 
 
 def random_semimajor_axis(amin, amax):
-    lamin = numpy.log10(amin.value_in(units.au))
-    lamax = numpy.log10(amax.value_in(units.au))
+    lamin = np.log10(amin.value_in(units.au))
+    lamax = np.log10(amax.value_in(units.au))
     rnd_min = lamin
     rnd_max = lamax
-    rnd = numpy.random.uniform(rnd_min, rnd_max, 1)
+    rnd = np.random.uniform(rnd_min, rnd_max, 1)
     a = 10**rnd
     return a | units.au
 
@@ -83,23 +91,23 @@ def make_companions_for_primaries(primaries, amin=1 | units.au, amax=1000 | unit
 def make_companion_for_primary(primary, amin, amax):
 
     companion_name = "secondary"
-    companion_mass = numpy.random.random() * primary.mass
+    companion_mass = np.random.random() * primary.mass
     companion_mass = max(companion_mass, 0.1 | units.MSun)
     companion_radius = ZAMS_radius(companion_mass)
     rsum = primary.radius + companion_radius
     a = random_semimajor_axis(amin, amax)[0]
-    e = numpy.sqrt(numpy.random.random())
+    e = np.sqrt(np.random.random())
     while rsum > a * (1.0 - e):
         a = random_semimajor_axis(amin, amax)[0]
-        e = numpy.sqrt(numpy.random.random())
+        e = np.sqrt(np.random.random())
     if a * (1 - e) < 3 * rsum:
         a = a * (1 - e)
         e = 0
     print("Orbit a=", a.in_(units.au), "e=", e)
-    inc = numpy.random.uniform(0, numpy.pi)  # what units..
-    mean_anomaly = numpy.random.uniform(0, 2 * numpy.pi)
-    LoAn = numpy.random.uniform(0, 2 * numpy.pi)
-    Aop = numpy.random.uniform(0, 2 * numpy.pi)
+    inc = np.random.uniform(0, np.pi)  # what units..
+    mean_anomaly = np.random.uniform(0, 2 * np.pi)
+    LoAn = np.random.uniform(0, 2 * np.pi)
+    Aop = np.random.uniform(0, 2 * np.pi)
 
     companion = make_secondary(
         primary,
@@ -116,23 +124,19 @@ def make_companion_for_primary(primary, amin, amax):
     return companion
 
 
-from determine_orbital_elements import calculate_orbital_elements_for_single_planet
-
-
 def Hill_radius(Mstar, a, Mplanet):
     return a * (Mplanet / (3.0 * Mstar)) ** (1.0 / 3.0)
 
 
 def make_tertiary_companions(primaries, companions):
-
     tertiaries = Particles()
     planets = Particles()
     for primary, companion in zip(primaries, companions):
         a, e, i = calculate_orbital_elements_for_single_planet(primary, companion)
         print("Orbit:", a.in_(units.au), e)
-        r = numpy.random.random()
+        r = np.random.random()
         if r <= 0.5:  # make triple
-            rr = numpy.random.random()
+            rr = np.random.random()
             if rr < 0.5:  # cirum-secondary
                 com = companion
                 amin = max(0.01 * a * (1 - e), 1 | units.au)  # 10*companion.radius)
@@ -177,8 +181,6 @@ def make_planets_for_planetaries(planetaries):
 
 
 def make_planets_for_planetary(star, rmin, rmax):
-    from make_planets_oligarch import make_planets_oligarch
-
     print("star=", star, rmin, rmax)
 
     disk_mass = 0.01 * star.mass
@@ -186,7 +188,6 @@ def make_planets_for_planetary(star, rmin, rmax):
     p.type = "planet"
     p.name = "planet"
     # p.host=star.key
-    from rotate import rotate_bodies_isotropically
 
     p = rotate_bodies_isotropically(p)
     p.position += star.position
@@ -195,7 +196,6 @@ def make_planets_for_planetary(star, rmin, rmax):
 
 
 def plot_bodies(bodies):
-
     length_unit = units.au
     stars = bodies[bodies.type == "star"]
     singletons = stars[stars.name == "singleton"]
@@ -207,7 +207,7 @@ def plot_bodies(bodies):
     planets = bodies[bodies.name == "planet"]
 
     m = 30 * singletons.mass.value_in(units.MSun)
-    pyplot.scatter(
+    plt.scatter(
         singletons.x.value_in(length_unit),
         singletons.y.value_in(length_unit),
         s=m,
@@ -215,7 +215,7 @@ def plot_bodies(bodies):
         alpha=0.5,
     )
     m = 30 * primaries.mass.value_in(units.MSun)
-    pyplot.scatter(
+    plt.scatter(
         primaries.x.value_in(length_unit),
         primaries.y.value_in(length_unit),
         s=m,
@@ -223,14 +223,14 @@ def plot_bodies(bodies):
         alpha=0.5,
     )
     m = 30 * secondaries.mass.value_in(units.MSun)
-    pyplot.scatter(
+    plt.scatter(
         secondaries.x.value_in(length_unit),
         secondaries.y.value_in(length_unit),
         s=m,
         c="g",
     )
     m = 30 * tertiaries.mass.value_in(units.MSun)
-    pyplot.scatter(
+    plt.scatter(
         tertiaries.x.value_in(length_unit),
         tertiaries.y.value_in(length_unit),
         s=m,
@@ -238,108 +238,84 @@ def plot_bodies(bodies):
     )
 
     m = 30 * planetaries.mass.value_in(units.MSun)
-    pyplot.scatter(
+    plt.scatter(
         planetaries.x.value_in(length_unit),
         planetaries.y.value_in(length_unit),
         s=m,
         c="y",
     )
     m = 1
-    pyplot.scatter(
+    plt.scatter(
         planets.x.value_in(length_unit), planets.y.value_in(length_unit), s=m, c="k"
     )
-    """
-    planets = bodies[bodies.type=="planet"]
-    debris = bodies[bodies.type=="debris"]
-    pyplot.scatter(bodies.x.value_in(units.au),
-                   bodies.y.value_in(units.au), s=0.1, c='k')
-    pyplot.scatter(stars.x.value_in(units.au),
-                   stars.y.value_in(units.au), s=30, c='y')
-    pyplot.scatter(planets.x.value_in(units.au),
-                   planets.y.value_in(units.au), s=10, c='b')
-    pyplot.scatter(debris.x.value_in(units.au),
-                   debris.y.value_in(units.au), s=1, c='k')
-    """
-    pyplot.xlabel("x [pc]")
-    pyplot.ylabel("y [pc]")
-    pyplot.show()
+    # planets = bodies[bodies.type == "planet"]
+    # debris = bodies[bodies.type == "debris"]
+    # plt.scatter(bodies.x.value_in(units.au), bodies.y.value_in(units.au), s=0.1, c="k")
+    # plt.scatter(stars.x.value_in(units.au), stars.y.value_in(units.au), s=30, c="y")
+    # plt.scatter(planets.x.value_in(units.au), planets.y.value_in(units.au), s=10, c="b")
+    # plt.scatter(debris.x.value_in(units.au), debris.y.value_in(units.au), s=1, c="k")
+    plt.xlabel("x [pc]")
+    plt.ylabel("y [pc]")
+    plt.show()
 
 
-def new_option_parser():
-    from amuse.units.optparse import OptionParser
-
-    result = OptionParser()
-    result.add_option(
-        "-f", dest="filename", default=None, help="input filename [%default]"
+def new_argument_parser():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    result.add_option(
-        "-F", dest="outfile", default=None, help="output filename [%default]"
-    )
-    result.add_option(
+    parser.add_argument("-f", "--filename", default=None, help="input filename")
+    parser.add_argument("-F", "--outfile", default=None, help="output filename")
+    parser.add_argument(
         "--nstars",
-        dest="nstars",
-        type="int",
+        type=int,
         default=3,
-        help="number of stars [%default]",
+        help="number of stars",
     )
-    result.add_option(
+    parser.add_argument(
         "--mass",
-        unit=units.MSun,
-        dest="mass",
-        type="float",
+        type=units.MSun,
         default=1 | units.MSun,
-        help="total cluster mass [%default]",
+        help="total cluster mass",
     )
-    result.add_option(
+    parser.add_argument(
         "--mmin",
-        unit=units.MSun,
-        dest="mmin",
-        type="float",
+        type=units.MSun,
         default=-0.1 | units.MSun,
-        help="minimum stellar mass [%default]",
+        help="minimum stellar mass",
     )
-    result.add_option(
+    parser.add_argument(
         "--mmax",
-        unit=units.MSun,
-        dest="mmax",
-        type="float",
+        type=units.MSun,
         default=100 | units.MSun,
-        help="maximum stellar mass [%default]",
+        help="maximum stellar mass",
     )
-    result.add_option(
-        "-Q", dest="Qvir", type="float", default=0.5, help="total mass [%default]"
-    )
-    result.add_option(
+    parser.add_argument("-Q", "--Qvir", type=float, default=0.5, help="virial ratio")
+    parser.add_argument(
         "--radius",
-        unit=units.parsec,
-        dest="radius",
-        type="float",
+        type=units.parsec,
         default=1.0 | units.parsec,
-        help="cluster radius [%default]",
+        help="cluster radius",
     )
-    result.add_option(
-        "--name", dest="name", default="star", help="stellar name [%default]"
-    )
-    result.add_option(
+    parser.add_argument("--name", default="star", help="stellar name")
+    parser.add_argument(
         "--seed",
-        dest="seed",
-        type="int",
+        type=int,
         default=-1,
-        help="random number seed [%default]",
+        help="random number seed",
     )
-    return result
+    return parser
 
 
-if __name__ in ("__main__", "__plot__"):
-    o, arguments = new_option_parser().parse_args()
-    if o.seed > 0:
-        numpy.random.seed(o.seed)
+def main():
+    args = new_argument_parser().parse_args()
+    if args.seed > 0:
+        np.random.seed(args.seed)
     else:
         print("random number seed from clock.")
 
-    n_star = o.nstars
-    mmin = o.mmin
-    cluster_radius = o.radius
+    n_star = args.nstars
+    mmin = args.mmin
+    cluster_radius = args.radius
 
     names = "star"
     masses = new_kroupa_mass_distribution(n_star, mass_min=mmin)
@@ -349,7 +325,7 @@ if __name__ in ("__main__", "__plot__"):
     bodies.type = "star"
     bodies.name = "star"
     # bodies.host = None
-    bodies.scale_to_standard(convert_nbody=converter, virial_ratio=o.Qvir)
+    bodies.scale_to_standard(convert_nbody=converter, virial_ratio=args.Qvir)
     print(bodies)
 
     # Select stars for single, binary companion or planetary host
@@ -379,14 +355,17 @@ if __name__ in ("__main__", "__plot__"):
 
     bodies.move_to_center()
 
-    index = 0
     time = 0 | units.Myr
-    if o.outfile == None:
-        filename = "star_cluster.amuse".format(index)
+    if args.outfile is None:
+        filename = "star_cluster.amuse"
     else:
-        filename = o.outfile
+        filename = args.outfile
     write_set_to_file(
         bodies, filename, "amuse", timestamp=time, overwrite_file=True, version="2.0"
     )
     plot_bodies(bodies)
     print("N=", len(bodies))
+
+
+if __name__ == "__main__":
+    main()

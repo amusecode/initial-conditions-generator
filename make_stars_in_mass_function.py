@@ -1,10 +1,16 @@
-from amuse.lab import *
-import sys
-import numpy
+import argparse
+
+import numpy as np
+
+from amuse.units import units
+from amuse.datamodel import Particles
+from amuse.ic.kroupa import new_kroupa_mass_distribution
+from amuse.ic.salpeter import new_salpeter_mass_distribution
+from amuse.io import write_set_to_file
 
 
 def ZAMS_radius(mass):
-    log_mass = numpy.log10(mass.value_in(units.MSun))
+    log_mass = np.log10(mass.value_in(units.MSun))
     mass_sq = (mass.value_in(units.MSun)) ** 2
     alpha = 0.08353 + 0.0565 * log_mass
     beta = 0.01291 + 0.2226 * log_mass
@@ -18,51 +24,51 @@ def ZAMS_radius(mass):
     return r_zams | units.RSun
 
 
-def new_option_parser():
-    from amuse.units.optparse import OptionParser
-
-    result = OptionParser()
-    result.add_option(
-        "-F", dest="outfile", default="star.amuse", help="output filename [%default]"
+def new_argument_parser():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    result.add_option(
-        "-N", dest="n_star", type="int", default=10, help="number of stars [%default]"
+    parser.add_argument(
+        "-F", dest="outfile", default="star.amuse", help="output filename"
     )
-    result.add_option(
+    parser.add_argument(
+        "-N", dest="n_star", type="int", default=10, help="number of stars"
+    )
+    parser.add_argument(
         "-m",
         unit=units.MSun,
         dest="m_min",
         type="float",
         default=0.1 | units.MSun,
-        help="number of stars [%default]",
+        help="number of stars",
     )
-    result.add_option(
+    parser.add_argument(
         "--Salpeter",
         action="store_true",
         default="False",
-        help="choose between Salpeter or Kroupa [%default]",
+        help="choose between Salpeter or Kroupa",
     )
-    result.add_option(
+    parser.add_argument(
         "--seed",
         dest="seed",
         type="int",
         default=-1,
-        help="random number seed [%default]",
+        help="random number seed",
     )
-    return result
+    return parser
 
 
-if __name__ in ("__main__", "__plot__"):
-    o, arguments = new_option_parser().parse_args()
-    if o.seed > 0:
-        numpy.random.seed(o.seed)
+def main():
+    args = new_argument_parser().parse_args()
+    if args.seed > 0:
+        np.random.seed(args.seed)
     else:
         print("random number seed from clock.")
 
-    if o.Salpeter:
-        mass = new_kroupa_mass_distribution(o.n_star, mass_min=o.m_min)
+    if args.Salpeter:
+        mass = new_kroupa_mass_distribution(args.n_star, mass_min=args.m_min)
     else:
-        mass = new_salpeter_mass_distribution(o.n_star, mass_min=o.m_min)
+        mass = new_salpeter_mass_distribution(args.n_star, mass_min=args.m_min)
     stars = Particles(len(mass))
     stars.mass = mass
     stars.position = (0, 0, 0) | units.pc
@@ -72,10 +78,14 @@ if __name__ in ("__main__", "__plot__"):
     stars.radius = ZAMS_radius(stars.mass)
 
     time = 0 | units.Myr
-    if o.outfile == None:
-        filename = "stars.amuse".format(index)
+    if args.outfile is None:
+        filename = "stars.amuse"
     else:
-        filename = o.outfile
+        filename = args.outfile
     write_set_to_file(
         stars, filename, "amuse", timestamp=time, overwrite_file=True, version="2.0"
     )
+
+
+if __name__ == "__main__":
+    main()

@@ -1,8 +1,19 @@
-import numpy
 import os
+import argparse
 import requests
-from amuse.lab import *
-from math import pi, sin, cos, atan2, sqrt
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+from amuse.units.trigo import pi, sin, cos, atan2, sqrt
+from amuse.units import units, nbody_system, constants
+from amuse.datamodel import Particles, Particle
+from amuse.plot import scatter
+from amuse.io import write_set_to_file
+from amuse.ext.orbital_elements import new_binary_from_orbital_elements
+
+from orbital_elements_to_cartesian import orbital_elements_to_pos_and_vel
+from orbital_elements_to_cartesian import orbital_period
 
 
 def eccentric_anomaly(mean_anomaly, e):
@@ -20,8 +31,6 @@ def eccentric_anomaly(mean_anomaly, e):
 
 
 def True_anomaly_from_mean_anomaly(Ma, e):
-    from math import sin
-
     Ta = (
         Ma
         + (2 * e - e**3 / 4.0) * sin(Ma)
@@ -34,7 +43,6 @@ def True_anomaly_from_mean_anomaly(Ma, e):
 def construct_particle_set_from_orbital_elements(
     name, mass, a, ecc, inc, Ma, Aop, LoAn, parent
 ):
-
     # print("length:", len(a), len(ecc), len(inc), len(Ma), len(Aop), len(LoAn), len(name))
 
     p = Particles(len(a))
@@ -44,14 +52,10 @@ def construct_particle_set_from_orbital_elements(
     Earth = p[p.name == "EM"]
     Earth.name = "EarthMoon"
 
-    from orbital_elements_to_cartesian import orbital_elements_to_pos_and_vel
-    from orbital_elements_to_cartesian import orbital_period
-
-    from amuse.ext.orbital_elements import new_binary_from_orbital_elements
 
     for i in range(len(p)):
         p[i].mass = mass[i]
-        Ta = True_anomaly_from_mean_anomaly(numpy.deg2rad(Ma[i]), ecc[i])
+        Ta = True_anomaly_from_mean_anomaly(np.deg2rad(Ma[i]), ecc[i])
         # print("True Anomaly:", Ta)
         b = new_binary_from_orbital_elements(
             parent.mass,
@@ -99,7 +103,7 @@ def read_orbital_elements_for_planets(
         1.309e22,
     ] | units.kg
 
-    sma = [] | units.AU
+    sma = [] | units.au
     ecc = []
     inc = []  # degrees
     Ma = []  # degrees
@@ -130,47 +134,46 @@ def read_orbital_elements_for_planets(
     return name, planet_mass, sma, ecc, inc, Ma, Aop, LoAn
 
 
-def new_option_parser():
-    from amuse.units.optparse import OptionParser
-
-    result = OptionParser()
-    result.add_option(
-        "-f", dest="filename", default="MPCORB.h5", help="read to file [%default]"
+def new_argument_parser():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    result.add_option(
-        "-F", dest="outfilename", default=None, help="write to file [%default]"
+    parser.add_argument(
+        "-f", dest="filename", default="MPCORB.h5", help="read to file"
     )
-    result.add_option(
+    parser.add_argument(
+        "-F", dest="outfilename", default=None, help="write to file"
+    )
+    parser.add_argument(
         "-d",
         unit=units.day,
         type="float",
         dest="Julian_date",
         default=2451545.0 | units.day,
-        help="Julan date [%default]",
+        help="Julan date",
     )
-    result.add_option(
+    parser.add_argument(
         "-n",
         dest="n_first",
         type="int",
         default=0,
-        help="first planet (Earth==4) [%default]",
+        help="first planet (Earth==4)",
     )
-    result.add_option(
+    parser.add_argument(
         "-N",
         dest="n_last",
         type="int",
         default=10,
         help="last planet (Neptune = 8)[%default]",
     )
-    return result
+    return parser
 
 
-if __name__ in ("__main__", "__plot__"):
-
-    o, arguments = new_option_parser().parse_args()
+def main():
+    args = new_argument_parser().parse_args()
 
     sun = Particles(1)
-    sun.Julian_date = o.Julian_date
+    sun.Julian_date = args.Julian_date
     sun.mass = 1 | units.MSun
     sun.radius = 1 | units.RSun
     sun.position = (0, 0, 0) | units.km
@@ -183,42 +186,44 @@ if __name__ in ("__main__", "__plot__"):
         print("download p_elem_t1.txt")
         url = "https://ssd.jpl.nasa.gov/txt/p_elem_t1.txt"
         datafile = requests.get(url)
-        open("p_elem_t1.txt", "wb").write(datafile.content)
+        with open("p_elem_t1.txt", "wb") as f:
+            f.write(datafile.content)
 
     name, mass, a, ecc, inc, Ma, Aop, LoAn = read_orbital_elements_for_planets(
-        filename="p_elem_t1.txt", Julian_date=o.Julian_date
+        filename="p_elem_t1.txt", Julian_date=args.Julian_date
     )
     p = construct_particle_set_from_orbital_elements(
         name, mass, a, ecc, inc, Ma, Aop, LoAn, sun[0]
     )
 
-    sun.add_particles(p[o.n_first : o.n_last])
+    sun.add_particles(p[args.n_first:args.n_last])
     sun.move_to_center()
 
     solar_system = sun
 
     print("number of particles N=", len(sun))
 
-    if o.outfilename:
+    if args.outfilename:
         write_set_to_file(
             sun,
-            o.outfilename,
+            args.outfilename,
             "amuse",
             append_to_file=False,
             overwrite_file=True,
             version="2.0",
         )
     else:
-        from amuse.plot import scatter
-        from matplotlib import pyplot
-
         star = solar_system[solar_system.type == "star"]
         planet = solar_system[solar_system.type == "planet"]
-        pyplot.scatter(
+        plt.scatter(
             star.x.value_in(units.au), star.y.value_in(units.au), s=100, c="y"
         )
-        pyplot.scatter(
+        plt.scatter(
             planet.x.value_in(units.au), planet.y.value_in(units.au), s=30, c="b"
         )
-        pyplot.show()
+        plt.show()
         print(planet)
+
+
+if __name__ == "__main__":
+    main()

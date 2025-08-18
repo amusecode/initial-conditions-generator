@@ -1,73 +1,77 @@
-from amuse.lab import *
+import argparse
 
-# import sys
-# import numpy
+import numpy as np
+
+from amuse.io import read_set_from_file, write_set_to_file
+from amuse.units import units
 
 
-def new_option_parser():
-    from amuse.units.optparse import OptionParser
-
-    result = OptionParser()
-    result.add_option(
-        "-f", dest="filename", default=None, help="input filename [%default]"
+def new_argument_parser():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    result.add_option(
-        "-F", dest="outfile", default=None, help="output filename [%default]"
+    parser.add_argument(
+        "-f", "--filename", default=None, help="input filename"
     )
-    result.add_option(
+    parser.add_argument(
+        "-F", "--outfile", default=None, help="output filename"
+    )
+    parser.add_argument(
         "--pos",
-        dest="position",
-        type="float",
+        "--position",
+        type=units.pc,
         nargs=3,
-        default=[-8340.0, 0.0, 27.0],  # parsec
-        help="move com position to [in pc]",
+        default=[-8340.0, 0.0, 27.0] | units.pc,
+        help="move com position here",
     )
-    result.add_option(
+    parser.add_argument(
         "--vel",
         dest="velocity",
-        type="float",
+        type=units.kms,
         nargs=3,
-        default=[11.1, 240.0, 7.25],
-        help="move com-velocity to [in km/s]",
+        default=[11.1, 240.0, 7.25] | units.kms,
+        help="move com-velocity here",
     )
-    result.add_option(
+    parser.add_argument(
         "-t",
-        unit=units.Myr,
-        dest="timestamp",
-        type="float",
+        "--timestamp",
+        type=units.Myr,
         default=0 | units.Myr,
-        help="set timestamp [%default]",
+        help="set timestamp",
     )
-    result.add_option(
+    parser.add_argument(
         "--seed",
-        dest="seed",
-        type="int",
+        type=int,
         default=-1,
-        help="random number seed [%default]",
+        help="random number seed",
     )
-    return result
+    return parser
 
 
-if __name__ in ("__main__", "__plot__"):
-    o, arguments = new_option_parser().parse_args()
+def main():
+    args = new_argument_parser().parse_args()
 
-    if o.seed > 0:
-        numpy.random.seed(o.seed)
+    if args.seed > 0:
+        np.random.seed(args.seed)
     else:
         print("random number seed from clock.")
 
-    bodies = read_set_from_file(o.filename, "hdf5", close_file=True)
+    bodies = read_set_from_file(args.filename, close_file=True)
 
     bodies.move_to_center()
-    bodies.position += o.position | units.parsec
-    bodies.velocity += o.velocity | units.kms
+    bodies.position += args.position | units.parsec
+    bodies.velocity += args.velocity | units.kms
 
     print(bodies)
-    time = o.timestamp
-    if o.outfile == None:
+    time = args.timestamp
+    if args.outfile is None:
         filename = "moved_snapshot.amuse"
     else:
-        filename = o.outfile
+        filename = args.outfile
     write_set_to_file(
         bodies, filename, "amuse", timestamp=time, append_to_file=False, version="2.0"
     )
+
+
+if __name__ == "__main__":
+    main()

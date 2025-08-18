@@ -1,17 +1,23 @@
-from amuse.lab import *
+import argparse
+
+from amuse.io import read_set_from_file
 
 
-def new_option_parser():
-    from amuse.units.optparse import OptionParser
-
-    result = OptionParser()
-    result.add_option(
-        "-f", dest="filename", default=None, help="input filename [%default]"
+def new_argument_parser():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    return result
+    parser.add_argument(
+        "-f", "--filename", default=None, help="input filename"
+    )
+    return parser
 
 
-if __name__ in ("__main__", "__plot__"):
-    o, arguments = new_option_parser().parse_args()
-    bodies = read_set_from_file(o.filename, "amuse", close_file=True)
+def main():
+    args = new_argument_parser().parse_args()
+    bodies = read_set_from_file(args.filename, close_file=True)
     print(bodies)
+
+
+if __name__ == "__main__":
+    main()
