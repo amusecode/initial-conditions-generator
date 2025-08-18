@@ -4,7 +4,7 @@ from math import sqrt
 import numpy as np
 
 from amuse.units import units, constants, nbody_system
-from amuse.units.trigo import pi, sin, cos, atan2
+from amuse.units.trigo import pi, sin, cos, arctan2
 from amuse.community.kepler import Kepler
 
 
@@ -96,7 +96,7 @@ def orbital_elements_to_pos_and_vel(
 
     EA = eccentric_anomaly(MA, ecc)  # eccentric anomaly
     # true anomaly in the correct quadrant
-    ta = 2.0 * atan2(sqrt(1.0 + ecc) * sin(EA / 2.0), sqrt(1.0 - ecc) * cos(EA / 2.0))
+    ta = 2.0 * arctan2(sqrt(1.0 + ecc) * sin(EA / 2.0), sqrt(1.0 - ecc) * cos(EA / 2.0))
     radius = a * (1.0 - ecc * cos(EA))  # radius from EA and ecc
 
     r = [] | units.au  # Cartesian position

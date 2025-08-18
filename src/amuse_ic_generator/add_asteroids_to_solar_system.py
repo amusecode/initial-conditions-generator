@@ -1,18 +1,19 @@
 import os
-import requests
+import urllib
 import argparse
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-from amuse.plot import scatter
-from amuse.units.trigo import pi, sin, cos, atan2, sqrt
 from amuse.units import units, nbody_system, constants
+from amuse.units.trigo import pi, sin, cos
 from amuse.datamodel import Particles, Particle
 from amuse.community.kepler.interface import Kepler
 from amuse.io import read_set_from_file, write_set_to_file
-from amuse.ext.solarsystem import solar_system_in_time
+from amuse.ic.solar_system_moons import new_lunar_system_in_time
+from amuse.ic.solar_system_moons import solar_system_in_time
 from amuse.ext.orbital_elements import new_binary_from_orbital_elements
+from amuse.plot import scatter
 
 
 def new_kepler():
@@ -239,8 +240,9 @@ def add_asteroids_to_solar_system(
     if not os.path.isfile(MPC_filename):
         print("download ", MPC_filename)
         url = f"https://www.minorplanetcenter.net/iau/MPCORB/{MPC_filename}"
-        datafile = requests.get(url)
-        open(MPC_filename, "wb").write(datafile.content)
+        datafile = urllib.request.urlopen(url)
+        with open(MPC_filename, "wb") as f:
+            f.write(datafile.content)
 
     sun = solar_system[solar_system.name == "Sun"][0]
 
