@@ -159,9 +159,7 @@ def new_argument_parser():
     parser.add_argument(
         "-f", "--infile", default="Plummer.amuse", help="input filename"
     )
-    parser.add_argument(
-        "-F", "--outfile", default=None, help="output filename"
-    )
+    parser.add_argument("-F", "--outfile", default=None, help="output filename")
     parser.add_argument(
         "-m",
         type=units.MSun,

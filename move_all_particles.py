@@ -10,12 +10,8 @@ def new_argument_parser():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    parser.add_argument(
-        "-f", "--filename", default=None, help="input filename"
-    )
-    parser.add_argument(
-        "-F", "--outfile", default=None, help="output filename"
-    )
+    parser.add_argument("-f", "--filename", default=None, help="input filename")
+    parser.add_argument("-F", "--outfile", default=None, help="output filename")
     parser.add_argument(
         "--pos",
         "--position",

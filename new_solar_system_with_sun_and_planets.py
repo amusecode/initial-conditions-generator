@@ -52,7 +52,6 @@ def construct_particle_set_from_orbital_elements(
     Earth = p[p.name == "EM"]
     Earth.name = "EarthMoon"
 
-
     for i in range(len(p)):
         p[i].mass = mass[i]
         Ta = True_anomaly_from_mean_anomaly(np.deg2rad(Ma[i]), ecc[i])
@@ -138,12 +137,8 @@ def new_argument_parser():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    parser.add_argument(
-        "-f", dest="filename", default="MPCORB.h5", help="read to file"
-    )
-    parser.add_argument(
-        "-F", dest="outfilename", default=None, help="write to file"
-    )
+    parser.add_argument("-f", dest="filename", default="MPCORB.h5", help="read to file")
+    parser.add_argument("-F", dest="outfilename", default=None, help="write to file")
     parser.add_argument(
         "-d",
         unit=units.day,
@@ -196,7 +191,7 @@ def main():
         name, mass, a, ecc, inc, Ma, Aop, LoAn, sun[0]
     )
 
-    sun.add_particles(p[args.n_first:args.n_last])
+    sun.add_particles(p[args.n_first : args.n_last])
     sun.move_to_center()
 
     solar_system = sun
@@ -215,9 +210,7 @@ def main():
     else:
         star = solar_system[solar_system.type == "star"]
         planet = solar_system[solar_system.type == "planet"]
-        plt.scatter(
-            star.x.value_in(units.au), star.y.value_in(units.au), s=100, c="y"
-        )
+        plt.scatter(star.x.value_in(units.au), star.y.value_in(units.au), s=100, c="y")
         plt.scatter(
             planet.x.value_in(units.au), planet.y.value_in(units.au), s=30, c="b"
         )

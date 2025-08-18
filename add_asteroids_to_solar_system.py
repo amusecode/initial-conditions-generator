@@ -282,9 +282,7 @@ def new_argument_parser():
         default="solar_system.amuse",
         help="input filename",
     )
-    parser.add_argument(
-        "-F", "--outfile", default=None, help="output filename"
-    )
+    parser.add_argument("-F", "--outfile", default=None, help="output filename")
     return parser
 
 

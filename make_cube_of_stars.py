@@ -37,12 +37,8 @@ def new_argument_parser():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    parser.add_argument(
-        "-f", "--filename", default=None, help="input filename"
-    )
-    parser.add_argument(
-        "-F", "--outfile", default=None, help="output filename"
-    )
+    parser.add_argument("-f", "--filename", default=None, help="input filename")
+    parser.add_argument("-F", "--outfile", default=None, help="output filename")
     parser.add_argument(
         "--nstars",
         type=int,
@@ -67,18 +63,14 @@ def new_argument_parser():
         default=100 | units.MSun,
         help="maximum stellar mass",
     )
-    parser.add_argument(
-        "-Q", "--Qvir", type="float", default=0.5, help="virial ratio"
-    )
+    parser.add_argument("-Q", "--Qvir", type="float", default=0.5, help="virial ratio")
     parser.add_argument(
         "--radius",
         type=units.parsec,
         default=1.0 | units.parsec,
         help="cluster radius",
     )
-    parser.add_argument(
-        "--name", default="star", help="stellar name"
-    )
+    parser.add_argument("--name", default="star", help="stellar name")
     parser.add_argument(
         "--seed",
         type=int,

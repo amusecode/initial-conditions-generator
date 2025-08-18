@@ -397,9 +397,7 @@ def new_argument_parser():
         default="starandplanets.amuse",
         help="input filename",
     )
-    parser.add_argument(
-        "-F", dest="outfile", default=None, help="output filename"
-    )
+    parser.add_argument("-F", dest="outfile", default=None, help="output filename")
     parser.add_argument(
         "--n_comets",
         dest="n_comets",
@@ -490,7 +488,14 @@ def main():
         m_comets = args.m_comets * si.mass.value_in(units.MSun)
         n_comets = int(args.n_comets * si.mass.value_in(units.MSun))
         comets = add_comets(
-            si, m_comets, n_comets, args.q_min, args.q_max, args.a_min, args.a_max, args.seed
+            si,
+            m_comets,
+            n_comets,
+            args.q_min,
+            args.q_max,
+            args.a_min,
+            args.a_max,
+            args.seed,
         )
         bodies.add_particles(comets)
     bodies.move_to_center()

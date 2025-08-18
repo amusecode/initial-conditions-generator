@@ -118,13 +118,9 @@ def new_argument_parser():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     result.add_argument(
-        "-f",
-        "--filename", default="Plummer.amuse", help="input filename"
+        "-f", "--filename", default="Plummer.amuse", help="input filename"
     )
-    result.add_argument(
-        "-F",
-        "--outfile", default=None, help="output filename"
-    )
+    result.add_argument("-F", "--outfile", default=None, help="output filename")
     result.add_argument(
         "--name",
         default="ABAuriga",
@@ -136,11 +132,7 @@ def new_argument_parser():
         default="ABAur_b",
         help="name of the companion",
     )
-    result.add_argument(
-        "--ctype",
-        default="star",
-        help="type of the companion"
-    )
+    result.add_argument("--ctype", default="star", help="type of the companion")
     result.add_argument(
         "-m",
         "--mass",

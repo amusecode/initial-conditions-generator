@@ -53,8 +53,6 @@ def rescale_planetary_orbit(sun, planets, name, sma):
     return planet
 
 
-
-
 def get_nice_model_conditions():
     names = ["Uranus", "Neptune", "Saturn", "Jupiter"]
 
@@ -104,9 +102,7 @@ def new_argument_parser():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    parser.add_argument(
-        "-f", "--filename", default=None, help="input filename"
-    )
+    parser.add_argument("-f", "--filename", default=None, help="input filename")
     parser.add_argument(
         "-F",
         "--outputfilename",

@@ -14,15 +14,9 @@ def new_argument_parser():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    parser.add_argument(
-        "-f", "--filename", default="star.amuse", help="input filename"
-    )
-    parser.add_argument(
-        "-F", "--outfile", default=None, help="output filename"
-    )
-    parser.add_argument(
-        "--name", default=None, help="Add planets to named star"
-    )
+    parser.add_argument("-f", "--filename", default="star.amuse", help="input filename")
+    parser.add_argument("-F", "--outfile", default=None, help="output filename")
+    parser.add_argument("--name", default=None, help="Add planets to named star")
     parser.add_argument(
         "--rmin_disk",
         type=units.au,

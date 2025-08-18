@@ -7,9 +7,7 @@ def new_argument_parser():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    parser.add_argument(
-        "-f", "--filename", default=None, help="input filename"
-    )
+    parser.add_argument("-f", "--filename", default=None, help="input filename")
     return parser
 
 

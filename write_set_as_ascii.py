@@ -9,9 +9,7 @@ def new_argument_parser():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
 
-    parser.add_argument(
-        "-f", dest="filename", default=None, help="input filename"
-    )
+    parser.add_argument("-f", dest="filename", default=None, help="input filename")
     parser.add_argument(
         "-F", dest="outfile", default="star.csv", help="output filename"
     )
@@ -25,7 +23,9 @@ def main():
     print(bodies)
 
     with open(args.outfile, "w", encoding="utf-8") as f:
-        print("# body key, name, type, mass (Msun), position (au), velocity (kms)", file=f)
+        print(
+            "# body key, name, type, mass (Msun), position (au), velocity (kms)", file=f
+        )
 
         for bi in bodies:
             print(
