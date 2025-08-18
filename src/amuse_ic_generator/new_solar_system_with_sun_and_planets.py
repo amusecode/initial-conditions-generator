@@ -1,6 +1,6 @@
 import os
 import argparse
-import requests
+import urllib
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -180,7 +180,7 @@ def main():
     if not os.path.isfile("p_elem_t1.txt"):
         print("download p_elem_t1.txt")
         url = "https://ssd.jpl.nasa.gov/txt/p_elem_t1.txt"
-        datafile = requests.get(url)
+        datafile = urllib.request.urlopen(url)
         with open("p_elem_t1.txt", "wb") as f:
             f.write(datafile.content)
 
