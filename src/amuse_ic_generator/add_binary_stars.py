@@ -1,8 +1,10 @@
 """Makes binary stars.
 
 Takes an AMUSE file as input, selects the stars from it within a specified mass
-range, and adds binary companions to a specified fraction (randomly selected) of these stars.
+range, and adds binary companions to a specified fraction (randomly selected)
+of these stars.
 """
+
 import argparse
 
 import numpy as np
@@ -13,11 +15,15 @@ from amuse.community.kepler import Kepler
 from amuse.io import read_set_from_file, write_set_to_file
 
 
-def semimajor_axis_to_orbital_period(a, Mtot):
-    return 2 * np.pi * (a**3 / (constants.G * Mtot)).sqrt()
+def semimajor_axis_to_orbital_period(a, mass_total):
+    """Returns the orbital period for a given semimajor axis and total mass.
+    """
+    return 2 * np.pi * (a**3 / (constants.G * mass_total)).sqrt()
 
 
 def new_kepler(converter):
+    """Returns a new Kepler worker.
+    """
     kepler = Kepler(converter)
     kepler.initialize_code()
     kepler.set_longitudinal_unit_vector(1.0, 0.0, 0.0)
@@ -25,7 +31,9 @@ def new_kepler(converter):
     return kepler
 
 
-def new_binary_orbit(mass1, mass2, semi_major_axis, eccentricity=0, keyoffset=1):
+def new_binary_orbit(mass1, mass2, semi_major_axis, eccentricity=0):
+    """Returns a binary orbit for the given parameters.
+    """
     total_mass = mass1 + mass2
     mass_fraction_particle_1 = mass1 / (total_mass)
 
@@ -58,6 +66,7 @@ def new_binary_orbit(mass1, mass2, semi_major_axis, eccentricity=0, keyoffset=1)
 
 
 def random_semimajor_axis(amin, amax):
+    """Generates a random semimajor axis for a binary star system."""
     lamin = np.log10(amin.value_in(units.au))
     lamax = np.log10(amax.value_in(units.au))
     rnd_min = lamin
@@ -67,31 +76,44 @@ def random_semimajor_axis(amin, amax):
     return a | units.au
 
 
-# see Eggleton 2006 Equation 1.6.3 (2006epbm.book.....E)
-def random_semimajor_axis_PPE(Mprim, Msec, amin, amax):
+def random_semimajor_axis_ppe(mass_primary, mass_secondary, a_min, a_max):
+    """Generates a random semimajor axis for a binary star system.
 
-    Pmax = semimajor_axis_to_orbital_period(amax, Mprim + Msec).value_in(units.day)
-    Pmin = semimajor_axis_to_orbital_period(amin, Mprim + Msec).value_in(units.day)
-    mpf = (Mprim.value_in(units.MSun) ** 2.5) / 5.0e4
-    rnd_max = (Pmax * mpf) ** (1.0 / 3.3) / (1 + (Pmin * mpf) ** (1.0 / 3.3))
-    rnd_min = (Pmin * mpf) ** (1.0 / 3.3) / (1 + (Pmax * mpf) ** (1.0 / 3.3))
+    See Eggleton 2006 Equation 1.6.3 (2006epbm.book.....E).
+    """
+    orbital_period_max = semimajor_axis_to_orbital_period(
+        a_max, mass_primary + mass_secondary
+    ).value_in(units.day)
+    orbital_period_min = semimajor_axis_to_orbital_period(
+        a_min, mass_primary + mass_secondary
+    ).value_in(units.day)
+    mpf = (mass_primary.value_in(units.MSun) ** 2.5) / 5.0e4
+    rnd_max = (orbital_period_max * mpf) ** (1.0 / 3.3) / (
+        1 + (orbital_period_min * mpf) ** (1.0 / 3.3)
+    )
+    rnd_min = (orbital_period_min * mpf) ** (1.0 / 3.3) / (
+        1 + (orbital_period_max * mpf) ** (1.0 / 3.3)
+    )
     rnd_max = min(rnd_max, 1)
     rnd = np.random.uniform(rnd_min, rnd_max, 1)
-    Porb = ((rnd / (1.0 - rnd)) ** 3.3) / mpf | units.day
-    print(Pmin, Pmax, Porb)
-    xx
+    orbital_period = ((rnd / (1.0 - rnd)) ** 3.3) / mpf | units.day
+    print(orbital_period_min, orbital_period_max, orbital_period)
 
-    Mtot = Mprim + Msec
-    a = ((constants.G * Mtot) * (Porb / (2 * np.pi)) ** 2) ** (1.0 / 3.0)
-    return a
+    mass_total = mass_primary + mass_secondary
+    semi_major_axis = (
+        (constants.G * mass_total) * (orbital_period / (2 * np.pi)) ** 2
+    ) ** (1.0 / 3.0)
+    return semi_major_axis
 
 
-def ZAMS_radius(mass):
-    log_mass = np.log10(mass.value_in(units.MSun))
+def zams_radius(mass):
+    """Returns the ZAMS radius of a star with the given mass.
+    """
+    # log_mass = np.log10(mass.value_in(units.MSun))
     mass_sq = (mass.value_in(units.MSun)) ** 2
-    alpha = 0.08353 + 0.0565 * log_mass
-    beta = 0.01291 + 0.2226 * log_mass
-    gamma = 0.1151 + 0.06267 * log_mass
+    # alpha = 0.08353 + 0.0565 * log_mass
+    # beta = 0.01291 + 0.2226 * log_mass
+    # gamma = 0.1151 + 0.06267 * log_mass
     r_zams = (
         pow(mass.value_in(units.MSun), 1.25)
         * (0.1148 + 0.8604 * mass_sq)
@@ -101,23 +123,30 @@ def ZAMS_radius(mass):
     return r_zams | units.RSun
 
 
-def make_secondaries(center_of_masses, Nbin, amin, amax):
+def make_secondaries(center_of_masses, number_of_binaries, a_min, a_max):
+    """Generates binary pairs from a list of stars.
+    Takes a random subset of the given stars, and generates secondary
+    companions for these. The semi-major axis is chosen randomly within the
+    given range, and the eccentricity is chosen randomly.
+    Returns a particle set containing the systems (type: star), the primaries
+    in the systems (type: primary) and the secondaries in the systems (type:
+    secondary).
+    """
     resulting_binaries = Particles()
     singles_in_binaries = Particles()
-    binaries = center_of_masses.random_sample(Nbin)
+    binaries = center_of_masses.random_sample(number_of_binaries)
     mmin = center_of_masses.mass.min()
     for bi in binaries:
         mp = bi.mass
         ms = (
-            np.random.uniform(
-                mmin.value_in(units.MSun),
-                mp.value_in(units.MSun)
-            ) | units.MSun
+            np.random.uniform(mmin.value_in(units.MSun), mp.value_in(units.MSun))
+            | units.MSun
         )
         a = 0.0 | units.au
         e = 0.0
+        # FIXME: this doesn't work since bi.radius is unset / zero!
         while bi.radius > a * (1.0 - e):
-            a = random_semimajor_axis(amin, amax)
+            a = random_semimajor_axis(a_min, a_max)
             e = np.sqrt(np.random.random())
         print("Orbit a=", a.in_(units.au), "e=", e)
 
@@ -128,7 +157,7 @@ def make_secondaries(center_of_masses, Nbin, amin, amax):
         nb.type = "star"
         nb[0].name = "primary"
         nb[1].name = "secondary"
-        nb[1].radius = ZAMS_radius(nb[1].mass)
+        nb[1].radius = zams_radius(nb[1].mass)
 
         nb.radius = 0.01 * a
 
@@ -146,7 +175,9 @@ def make_secondaries(center_of_masses, Nbin, amin, amax):
     return single_stars
 
 
-def calculate_orbital_elementss(bi, converter):
+def calculate_orbital_elements(bi, converter):
+    """Calculates the orbital elements of a binary system.
+    """
     kep = new_kepler(converter)
     comp1 = bi.child1
     comp2 = bi.child2
@@ -179,14 +210,14 @@ def new_argument_parser():
         "--mmin",
         type=units.MSun,
         default=0 | units.MSun,
-        help="minimum stellar mass for binary",
+        help="minimum stellar mass for binary (inclusive)",
     )
     parser.add_argument(
         "-M",
         "--mmax",
         type=units.MSun,
         default=1000 | units.MSun,
-        help="maximum stellar mass for binary",
+        help="maximum stellar mass for binary (exclusive)",
     )
     parser.add_argument(
         "-a",
@@ -219,16 +250,30 @@ def main():
         outfile = "single_stars_and_binaries.amuse"
 
     bodies = read_set_from_file(args.filename, close_file=True)
-    stars = bodies[bodies.type.lower() == "star"]
-    selected_stars = stars[stars.mass > args.mmin]
+    print(bodies[0])
+    stars = bodies[bodies.type == "star"]
+    print(f"star: {stars[0]}")
+    print(f"Mass limits: {args.mmin} {args.mmax}")
+    selected_stars = stars[stars.mass >= args.mmin]
     selected_stars = selected_stars[selected_stars.mass < args.mmax]
-    Nbin = int(args.f_binaries * len(selected_stars))
-    print(f"Number of stars: {len(stars)} {len(selected_stars)} {Nbin}")
+    number_of_binaries = int(args.f_binaries * len(selected_stars))
+    print(f"Number of stars: {len(stars)} {len(selected_stars)} {number_of_binaries}")
+    if number_of_binaries == 0:
+        print("No binaries added (try increasing --f_binaries or relaxing mass limits)")
+        write_set_to_file(
+            selected_stars, outfile, "amuse", append_to_file=False, version="2.0"
+        )
+        return
 
-    stars = make_secondaries(selected_stars, Nbin, args.amin, args.amax)
+    binary_stars = make_secondaries(selected_stars, number_of_binaries, args.amin, args.amax)
     time = 0 | units.Myr
+
+    all_stars = stars
+    all_stars.remove_particles(selected_stars)
+    all_stars.add_particles(binary_stars)
+
     write_set_to_file(
-        stars, outfile, "amuse", timestamp=time, append_to_file=False, version="2.0"
+        all_stars, outfile, "amuse", timestamp=time, append_to_file=False, version="2.0"
     )
 
 

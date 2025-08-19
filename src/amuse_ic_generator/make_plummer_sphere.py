@@ -34,7 +34,7 @@ def new_argument_parser():
         "--mass",
         type=units.MSun,
         default=1 | units.MSun,
-        help="total cluster mass",
+        help="stellar mass (equal mass for all stars, ignored if mmin > 0)",
     )
     parser.add_argument(
         "--mmin",
@@ -48,7 +48,7 @@ def new_argument_parser():
         default=100 | units.MSun,
         help="maximum stellar mass",
     )
-    parser.add_argument("-Q", "--Qvir", type=float, default=0.5, help="total mass")
+    parser.add_argument("-Q", "--Qvir", type=float, default=0.5, help="virial ratio")
     parser.add_argument(
         "--radius",
         type=units.parsec,
