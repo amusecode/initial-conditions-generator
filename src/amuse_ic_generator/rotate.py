@@ -1,3 +1,5 @@
+"""Rotate (sub)sets of particles from an AMUSE file.
+"""
 import sys
 import argparse
 import numpy as np
@@ -57,7 +59,8 @@ def rotate_minor_bodies_around_star(star, bodies):
 
 def new_argument_parser():
     parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description=__doc__,
     )
     parser.add_argument("-f", "--filename", default=None, help="input filename")
     parser.add_argument("-F", "--outfile", default=None, help="output filename")
