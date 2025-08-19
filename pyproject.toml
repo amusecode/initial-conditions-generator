@@ -7,6 +7,13 @@ dependencies = [
 ]
 description = "Initial Conditions Generator for AMUSE"
 
+[project.scripts]
+amuse_ic_new_plummer_sphere = "amuse_ic_generator.make_plummer_sphere:main"
+amuse_ic_new_fractal_model = "amuse_ic_generator.make_fractal_model:main"
+
+amuse_print_snapshot = "amuse_ic_generator.print_snapshot:main"
+amuse_plot_bodies = "amuse_ic_generator.plot_bodies:main"
+
 [build-system]
 requires = ["hatchling", "versioningit"]
 build-backend = "hatchling.build"
@@ -26,5 +33,3 @@ distance-dirty = "{next_version}.dev{distance}+{vcs}{rev}.d{build_date:%Y%m%d}"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.hatch.scripts]
-plot_bodies = "plot_bodies:main"
