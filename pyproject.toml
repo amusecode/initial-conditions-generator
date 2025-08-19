@@ -8,15 +8,16 @@ dependencies = [
 description = "Initial Conditions Generator for AMUSE"
 
 [project.scripts]
-amuse_ic_new_plummer_sphere = "amuse_ic_generator.make_plummer_sphere:main"
-amuse_ic_new_fractal_model = "amuse_ic_generator.make_fractal_model:main"
 amuse_ic_name_stars = "amuse_ic_generator.name_stars:main"
-amuse_ic_add_planets_oligarchic = "amuse_ic_generator.add_planets_oligarchic:main"
+amuse_ic_new_fractal_model = "amuse_ic_generator.make_fractal_model:main"
+amuse_ic_new_plummer_sphere = "amuse_ic_generator.make_plummer_sphere:main"
+amuse_ic_add_asteroids = "amuse_ic_generator.add_scattered_asteroids:main"
 amuse_ic_add_debris_disk = "amuse_ic_generator.add_debris_disk:main"
+amuse_ic_add_planets_oligarchic = "amuse_ic_generator.add_planets_oligarchic:main"
 amuse_ic_rotate = "amuse_ic_generator.rotate:main"
 
-amuse_print_snapshot = "amuse_ic_generator.print_snapshot:main"
 amuse_plot_bodies = "amuse_ic_generator.plot_bodies:main"
+amuse_print_snapshot = "amuse_ic_generator.print_snapshot:main"
 
 [build-system]
 requires = ["hatchling", "versioningit"]
