@@ -1,3 +1,7 @@
+"""Give a random subset of stars a name
+
+Takes an AMUSE file as input and gives a random subset of particles a name
+"""
 import argparse
 
 import numpy as np
@@ -8,11 +12,12 @@ from amuse.io import write_set_to_file, read_set_from_file
 
 def new_argument_parser():
     parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description=__doc__,
     )
     parser.add_argument("-f", "--filename", default=None, help="input filename")
     parser.add_argument("-F", "--outfile", default=None, help="output filename")
-    parser.add_argument("--name", default="Sun", help="disk mass")
+    parser.add_argument("--name", default="Sun", help="name of the stars")
     parser.add_argument(
         "--nstars",
         type=int,

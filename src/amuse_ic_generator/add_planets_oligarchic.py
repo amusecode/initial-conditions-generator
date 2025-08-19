@@ -1,4 +1,12 @@
+"""Add planets to a subsection of stars in an AMUSE file.
+
+Takes an AMUSE file as input, selects a subset of stars (specified by name and mass),
+and adds a random number of planets to each star, following an oligarchic distribution.
+The radius and mass of the disk can be specified, as well as the number of planets and their mass relative to the star mass.
+"""
+
 import argparse
+
 import numpy as np
 
 from amuse.units import units
@@ -12,7 +20,8 @@ from move_bodies_to_stellar_position import move_bodies_to_stellar_position
 
 def new_argument_parser():
     parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description=__doc__,
     )
     parser.add_argument("-f", "--filename", default="star.amuse", help="input filename")
     parser.add_argument("-F", "--outfile", default=None, help="output filename")
@@ -140,3 +149,7 @@ def main():
         overwrite_file=True,
         version="2.0",
     )
+
+
+if __name__ == "__main__":
+    main()
