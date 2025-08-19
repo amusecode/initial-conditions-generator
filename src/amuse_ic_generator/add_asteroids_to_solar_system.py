@@ -1,3 +1,9 @@
+"""Adds asteroids to a solar system.
+
+Reads a solar system from a file, and adds asteroids to it.
+Uses a database from the IAU Minor Planet Center (MPC) as input for the asteroids.
+"""
+
 import os
 import urllib
 import argparse
@@ -8,7 +14,7 @@ import matplotlib.pyplot as plt
 from amuse.units import units, nbody_system, constants
 from amuse.units.trigo import pi, sin, cos
 from amuse.datamodel import Particles, Particle
-from amuse.community.kepler.interface import Kepler
+from amuse.community.kepler import Kepler
 from amuse.io import read_set_from_file, write_set_to_file
 from amuse.ic.solar_system_moons import new_lunar_system_in_time
 from amuse.ic.solar_system_moons import solar_system_in_time
@@ -67,7 +73,7 @@ def get_position(
         [0.0, 0.0, 1.0],
     )
     A = np.dot(np.dot(a1, a2), a3)
-    print(A, r)
+    # print(A, r)
 
     r_vec = np.dot(A, np.reshape(r, 3, "F"))
     v_vec = np.dot(A, np.reshape(v, 3, "F"))
@@ -96,12 +102,12 @@ def true_anomaly_from_mean_anomaly(Ma, e):
 def construct_particle_set_from_orbital_elements(
     name, mass, a, ecc, inc, Ma, Aop, LoAn, Mparent=1 | units.MSun
 ):
-    print(
-        "length:", len(a), len(ecc), len(inc), len(Ma), len(Aop), len(LoAn), len(name)
-    )
+    # print(
+    #     "length:", len(a), len(ecc), len(inc), len(Ma), len(Aop), len(LoAn), len(name)
+    # )
 
     p = Particles(len(a))
-    print(name)
+    # print(name)
     p.name = name
     p.type = "asteroid"
     p.host = "Sun"
@@ -172,7 +178,7 @@ def read_orbital_elements_from_CometEls(filename="CometEls", n=-1):
     U = []
     MPC_data = False
     for line in open(filename):
-        print(line)
+        # print(line)
         if True:
             p = float(line[31:40]) | units.au
             # ecc.append(float(line[50:57]))
@@ -180,7 +186,7 @@ def read_orbital_elements_from_CometEls(filename="CometEls", n=-1):
             if True:  # e>0.9:
                 ecc.append(e)
                 name.append(line[0:12])
-                print(name[-1])
+                # print(name[-1])
                 if ecc[-1] == 1:
                     ecc[-1] -= 1.0e-5
                 a.append(p / (1 - ecc[-1]))
@@ -191,7 +197,7 @@ def read_orbital_elements_from_CometEls(filename="CometEls", n=-1):
                 mop = float(line[19:21])
                 dop = float(line[22:29])
                 Ma.append((np.random.random() * 360 - 180) | units.deg)
-                print(a[-1], ecc[-1], inc[-1], Aop[-1], LoAn[-1])
+                # print(a[-1], ecc[-1], inc[-1], Aop[-1], LoAn[-1])
                 if n > 0 and len(a) >= n:
                     break
 
@@ -219,7 +225,7 @@ def read_orbital_elements_from_MinorPlanetCenter(filename="MPCORB.DAT", n=-1):
     LoAn = [] | units.deg
     name = []
     for line in open(filename):
-        print(line)
+        # print(line)
         Ma.append(units.deg(line[26:35]))
         Aop.append(units.deg(line[37:46]))
         LoAn.append(units.deg(line[48:57]))
@@ -238,11 +244,11 @@ def add_asteroids_to_solar_system(
 
     # download the asteroid ephemerids file
     if not os.path.isfile(MPC_filename):
-        print("download ", MPC_filename)
+        print("downloading ", MPC_filename)
         url = f"https://www.minorplanetcenter.net/iau/MPCORB/{MPC_filename}"
-        datafile = urllib.request.urlopen(url)
-        with open(MPC_filename, "wb") as f:
-            f.write(datafile.content)
+        with urllib.request.urlopen(url) as datafile:
+            with open(MPC_filename, "wb") as f:
+                f.write(datafile.content)
 
     sun = solar_system[solar_system.name == "Sun"][0]
 
@@ -254,7 +260,7 @@ def add_asteroids_to_solar_system(
         name, mass, a, ecc, inc, Ma, Aop, LoAn, sun.mass
     )
 
-    print(p)
+    # print(p)
     print("number of particles N=", len(p))
     solar_system.add_particles(p)
     solar_system.move_to_center()
@@ -284,7 +290,13 @@ def new_argument_parser():
         default="solar_system.amuse",
         help="input filename",
     )
-    parser.add_argument("-F", "--outfile", default=None, help="output filename")
+    parser.add_argument(
+        "-F",
+        "--outfile",
+        default="solar_system_with_asteroids.amuse",
+        help="output filename",
+    )
+    parser.add_argument("--plot", default=False, action="store_true")
     return parser
 
 
@@ -297,18 +309,19 @@ def main():
     solar_system = add_asteroids_to_solar_system(
         solar_system, args.MPC_filename, Julian_date, args.number_of_asteroids
     )
-    print(solar_system)
+    # print(solar_system)
 
-    star = solar_system[solar_system.type == "star"]
-    planet = solar_system[solar_system.type == "planet"]
-    moon = solar_system[solar_system.type == "moon"]
-    asteroid = solar_system[solar_system.type == "asteroid"]
-    scatter(star.x, star.y, s=100, c="y")
-    scatter(planet.x, planet.y, s=30, c="b")
-    scatter(moon.x, moon.y, s=10, c="r")
-    scatter(asteroid.x, asteroid.y, s=1, c="k")
-    plt.show()
-    print(planet)
+    if args.plot:
+        star = solar_system[solar_system.type == "star"]
+        planet = solar_system[solar_system.type == "planet"]
+        moon = solar_system[solar_system.type == "moon"]
+        asteroid = solar_system[solar_system.type == "asteroid"]
+        scatter(star.x, star.y, s=100, c="y")
+        scatter(planet.x, planet.y, s=30, c="b")
+        scatter(moon.x, moon.y, s=10, c="r")
+        scatter(asteroid.x, asteroid.y, s=1, c="k")
+        plt.show()
+    # print(planet)
 
     if args.outfile:
         write_set_to_file(
