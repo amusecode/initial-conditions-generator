@@ -21,8 +21,9 @@ def new_argument_parser():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    parser.add_argument("-f", "--filename", default=None, help="input filename")
-    parser.add_argument("-F", "--outfile", default=None, help="output filename")
+    parser.add_argument(
+        "-F", "--outfile", default="plummer.amuse", help="output filename"
+    )
     parser.add_argument(
         "--nstars",
         type=int,
@@ -80,12 +81,13 @@ def main():
     bodies = make_plummer_sphere(args.nstars, masses, args.name, converter)
     bodies.scale_to_standard(convert_nbody=converter, virial_ratio=args.Qvir)
     time = 0 | units.Myr
-    if args.outfile is None:
-        filename = "plummer.amuse"
-    else:
-        filename = args.outfile
     write_set_to_file(
-        bodies, filename, "amuse", timestamp=time, append_to_file=False, version="2.0"
+        bodies,
+        args.outfile,
+        "amuse",
+        timestamp=time,
+        append_to_file=False,
+        version="2.0",
     )
 
 
