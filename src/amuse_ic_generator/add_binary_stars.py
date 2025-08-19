@@ -1,3 +1,8 @@
+"""Makes binary stars.
+
+Takes an AMUSE file as input, selects the stars from it within a specified mass
+range, and adds binary companions to a specified fraction (randomly selected) of these stars.
+"""
 import argparse
 
 import numpy as np
@@ -104,8 +109,10 @@ def make_secondaries(center_of_masses, Nbin, amin, amax):
     for bi in binaries:
         mp = bi.mass
         ms = (
-            np.random.uniform(mmin.value_in(units.MSun), mp.value_in(units.MSun))
-            | units.MSun
+            np.random.uniform(
+                mmin.value_in(units.MSun),
+                mp.value_in(units.MSun)
+            ) | units.MSun
         )
         a = 0.0 | units.au
         e = 0.0
@@ -154,7 +161,8 @@ def calculate_orbital_elementss(bi, converter):
 
 def new_argument_parser():
     parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description=__doc__,
     )
     parser.add_argument(
         "-f", "--filename", default="Plummer.amuse", help="input filename"
