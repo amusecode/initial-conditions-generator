@@ -1,4 +1,11 @@
+"""Add a debris disk to stars read from an AMUSE file.
+
+This script reads an AMUSE file containing stellar particles and adds debris
+disks to the stars.
+"""
+
 import argparse
+
 import numpy as np
 
 from amuse.units import units, nbody_system
@@ -37,7 +44,8 @@ def add_debris_disk(
 
 def new_argument_parser():
     parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description=__doc__,
     )
     parser.add_argument("-f", "--filename", default=None, help="input filename")
     parser.add_argument("-F", "--outfile", default=None, help="output filename")
