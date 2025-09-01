@@ -1,0 +1,47 @@
+[project]
+name = "amuse-ic-generator"
+dynamic = ["version"]
+requires-python = ">=3.8"
+dependencies = [
+    "amuse-framework",
+]
+description = "Initial Conditions Generator for AMUSE"
+
+[project.scripts]
+# scripts to create a new particle set
+amuse_ic_new_fractal = "amuse_ic_generator.make_fractal_model:main"
+amuse_ic_new_plummer = "amuse_ic_generator.make_plummer_sphere:main"
+
+# scripts to add specific types of particles
+amuse_ic_add_asteroids = "amuse_ic_generator.add_scattered_asteroids:main"
+amuse_ic_add_binary_stars = "amuse_ic_generator.add_binary_stars:main"
+amuse_ic_add_debris_disk = "amuse_ic_generator.add_debris_disk:main"
+amuse_ic_add_planets_oligarchic = "amuse_ic_generator.add_planets_oligarchic:main"
+
+# scripts to modify existing particles
+amuse_ic_name_stars = "amuse_ic_generator.name_stars:main"
+amuse_ic_rotate = "amuse_ic_generator.rotate:main"
+
+# scripts to inspect particle sets
+amuse_plot_bodies = "amuse_ic_generator.plot_bodies:main"
+amuse_print_snapshot = "amuse_ic_generator.print_snapshot:main"
+
+[build-system]
+requires = ["hatchling", "versioningit"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "versioningit"
+
+[tool.versioningit.next-version]
+method = "smallest"
+
+[tool.versioningit.format]
+distance = "{next_version}.dev{distance}+{vcs}{rev}"
+dirty = "{base_version}+d{build_date:%Y%m%d}"
+distance-dirty = "{next_version}.dev{distance}+{vcs}{rev}.d{build_date:%Y%m%d}"
+
+[tool.hatch.build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
