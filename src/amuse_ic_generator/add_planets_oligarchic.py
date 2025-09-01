@@ -14,8 +14,8 @@ from amuse.ext.orbital_elements import new_binary_from_orbital_elements
 from amuse.ext.protodisk import ProtoPlanetaryDisk
 from amuse.io import write_set_to_file, read_set_from_file
 
-from make_planets_oligarch import make_planets_oligarch
-from move_bodies_to_stellar_position import move_bodies_to_stellar_position
+from .make_planets_oligarch import make_planets_oligarch
+from .move_bodies_to_stellar_position import move_bodies_to_stellar_position
 
 
 def new_argument_parser():

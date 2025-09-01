@@ -1,5 +1,5 @@
-"""Rotate (sub)sets of particles from an AMUSE file.
-"""
+"""Rotate (sub)sets of particles from an AMUSE file."""
+
 import sys
 import argparse
 import numpy as np
@@ -11,9 +11,9 @@ from amuse.io import write_set_to_file, read_set_from_file
 
 
 def random_Euler_angles():
-    phi = 2 * pi * np.random.random()
-    theta = arccos(1 - 2 * np.random.random())
-    chi = 2 * pi * np.random.random()
+    phi = 2 * pi * np.random.random() | units.rad
+    theta = arccos(1 - 2 * np.random.random()) | units.rad
+    chi = 2 * pi * np.random.random() | units.rad
     return phi, theta, chi
 
 
@@ -41,9 +41,6 @@ def test_rotate(phi, theta, chi):
 
 def rotate_bodies_isotropically(particles):
     phi, theta, chi = random_Euler_angles()
-    phi = np.rad2deg(phi)
-    theta = np.rad2deg(theta)
-    chi = np.rad2deg(chi)
     rotate(particles, phi, theta, chi)
     return particles
 
@@ -79,7 +76,11 @@ def new_argument_parser():
         help="rotate under y-axis",
     )
     parser.add_argument(
-        "--type", "--rotate_type", default="", help="rotate particle type"
+        "--type",
+        "--rotate_type",
+        dest="rotate_type",
+        default="",
+        help="particle type to rotate",
     )
     parser.add_argument(
         "-c",
@@ -115,7 +116,7 @@ def main():
             theta = args.theta
             chi = args.chi
 
-        rotate(bodies, phi, theta, chi)  # takes angles in degrees
+        rotate(bodies, phi, theta, chi)  # takes angles
         bodies.position += com
         bodies.velocity += comv
 
