@@ -65,6 +65,7 @@ def new_argument_parser():
     parser.add_argument(
         "--nsuns",
         "--nsun_like_stars",
+        dest="nsun_like_stars",
         type=int,
         default=-1,
         help="number of Sun-like stars",
